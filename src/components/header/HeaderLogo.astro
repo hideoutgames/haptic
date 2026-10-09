@@ -31,12 +31,12 @@ const paths = logoPaths(0);
 <style>
   .logo {
     position: absolute;
-    /* ink origin (x=0, y=0) sits at 12.5 / 9 units from the button's centre / top */
+    /* viewBox is 44 wide so the svg's left edge lands on a whole CSS px (blur filters snap to them) */
     left: 50%;
     top: calc(7 * var(--m));
-    width: calc(43 * var(--m));
+    width: calc(44 * var(--m));
     height: calc(39 * var(--m));
-    margin-left: calc(-21.5 * var(--m));
+    margin-left: calc(-22 * var(--m));
     overflow: visible;
     pointer-events: none;
   }

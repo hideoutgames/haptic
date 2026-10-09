@@ -22,11 +22,11 @@ export interface Fringe {
 }
 
 export const WHITE: Fringe = { outer: 0, inner: 0, vertical: 0 };
-export const AMBER: Fringe = { outer: 2.3, inner: 1.65, vertical: 2.3 };
-export const RED: Fringe = { outer: 4.75, inner: 3.35, vertical: 4.55 };
+export const AMBER: Fringe = { outer: 2.4, inner: 1.7, vertical: 2.4 };
+export const RED: Fringe = { outer: 4.9, inner: 3.4, vertical: 4.7 };
 
 /** SVG viewBox: ink origin at (0, 0), room for fringes and blur on every side. */
-export const LOGO_VIEWBOX = { x: -9, y: -2, w: 43, h: 39 };
+export const LOGO_VIEWBOX = { x: -9.5, y: -2, w: 44, h: 39 };
 
 /** Gaussian blur (user units) that softens the white ink and the fringe copies. */
 export const BLUR = { ink: 0.25, fringe: 0.55 };
@@ -42,7 +42,7 @@ const R_STEM_END = 0.9;
 const R_FILLET = 2;
 
 // Bar (open state): 30 × 10.6, bottom-aligned with the H
-const BAR = { x0: -2.5, x1: 27.5, y0: 19.4, y1: 30, r: 1.8, innerL: 10, innerR: 15 };
+const BAR = { x0: -2.5, x1: 27.5, y0: 19.7, y1: 30.45, r: 1.8, innerL: 10, innerR: 15 };
 
 type Vertex = [x: number, y: number, radius: number];
 

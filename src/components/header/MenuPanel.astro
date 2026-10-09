@@ -138,10 +138,10 @@ const isCurrent = (p: Page) => [p.href, ...(p.also ?? [])].includes(currentPath)
   .menu__body {
     position: relative;
     display: grid;
-    grid-template-columns: 1fr 1fr;
+    grid-template-columns: calc(224 * var(--m)) 1fr;
     grid-template-rows: auto auto auto;
-    row-gap: calc(26.5 * var(--m));
-    padding: calc(23.5 * var(--m)) var(--pad-x) calc(14.3 * var(--m));
+    row-gap: calc(27 * var(--m));
+    padding: calc(23.4 * var(--m)) calc(24 * var(--m)) calc(14.6 * var(--m)) var(--pad-x);
     opacity: 0;
     transition: opacity 0.22s ease;
   }
@@ -205,7 +205,7 @@ const isCurrent = (p: Page) => [p.href, ...(p.also ?? [])].includes(currentPath)
   .menu__foot {
     grid-column: 1 / -1;
     grid-row: 3;
-    margin-top: calc(98.5 * var(--m) - 26.5 * var(--m));
+    margin-top: calc(99 * var(--m) - 27 * var(--m));
     display: flex;
     justify-content: space-between;
     align-items: center;
