@@ -7,18 +7,33 @@ import { withBase } from '../lib/paths';
 interface Props {
   title?: string;
   description?: string;
+  /** Show the intro preloader (once per browser session). See src/scripts/preload.ts. */
+  preload?: boolean;
 }
 
 const {
   title = 'Haptic — the portable game engine',
   description = 'Haptic by Hideout is a touch-first game engine you can bring anywhere: iPad, iPhone, Android, Mac, Windows and Linux.',
+  preload = false,
 } = Astro.props;
 ---
 
 <!doctype html>
-<html lang="en">
+<html lang="en" data-preload={preload ? '' : undefined}>
   <head>
     <meta charset="utf-8" />
+    <script is:inline>
+      // Hold the page behind the intro preloader only when JS runs, the page
+      // opts in, and the intro has not been shown in this session yet.
+      (function () {
+        var d = document.documentElement;
+        if (!d.hasAttribute('data-preload')) return;
+        try {
+          if (sessionStorage.getItem('haptic:intro-seen')) return;
+        } catch (e) {}
+        d.classList.add('is-loading');
+      })();
+    </script>
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
     <title>{title}</title>
     <meta name="description" content={description} />

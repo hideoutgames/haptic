@@ -19,7 +19,7 @@ import { PLATFORMS, PRICING_HREF } from '../data/downloads';
 import { withBase } from '../lib/paths';
 
 const TITLE = 'Get Haptic';
-const LEAD = 'Pick a screen. Start building.';
+const LEAD = 'Build from anywhere, anytime.';
 ---
 
 <section id="download" class="download" data-download data-platform="any" aria-labelledby="download-title">
@@ -27,11 +27,7 @@ const LEAD = 'Pick a screen. Start building.';
   <Grain />
 
   <div class="inner">
-    <h2 id="download-title" class="title" data-reveal>
-      <span class="title__fringe title__fringe--red" aria-hidden="true">{TITLE}</span>
-      <span class="title__fringe title__fringe--amber" aria-hidden="true">{TITLE}</span>
-      <span class="title__ink">{TITLE}</span>
-    </h2>
+    <h2 id="download-title" class="title" data-reveal>{TITLE}</h2>
     <p class="lead" data-reveal>{LEAD}</p>
 
     <div class="slot" data-reveal>
@@ -57,12 +53,9 @@ const LEAD = 'Pick a screen. Start building.';
           PLATFORMS.map((platform) => (
             <li data-secondary data-platform-id={platform.id} hidden={platform.group === 'desktop'}>
               {platform.store ? (
-                <>
-                  <a class="store" href={platform.href}>
-                    <StoreBadge store={platform.store} alt={`${platform.lead} ${platform.name}`} />
-                  </a>
-                  <span class="tag">Haptic Pro</span>
-                </>
+                <a class="store" href={platform.href}>
+                  <StoreBadge store={platform.store} alt={`${platform.lead} ${platform.name}`} />
+                </a>
               ) : (
                 <a class="chip" href={platform.href}>
                   <span class="chip__icon">{platform.icon && <PlatformIcon name={platform.icon} />}</span>
@@ -142,41 +135,23 @@ const LEAD = 'Pick a screen. Start building.';
     text-align: center;
   }
 
-  /* Title: white live text over two horizontally widened colour copies, as in the hero. */
+  /* Section heading: plain Onest Bold, white (deliberately not the logo/title style: no Block Berthold, no fringes). */
   .title {
     position: relative;
     z-index: var(--z-content);
     margin: 0;
-    font: 400 calc(112 * var(--u)) / 0.9 var(--font-display);
-    text-transform: uppercase;
+    font-family: var(--font-sans);
+    font-size: calc(72 * var(--u));
+    font-weight: 700;
+    line-height: 1.05;
+    letter-spacing: -0.028em;
     white-space: nowrap;
-  }
-
-  .title__ink {
-    position: relative;
-  }
-
-  .title__fringe {
-    position: absolute;
-    inset: 0;
-    filter: blur(1.5px);
-    pointer-events: none;
-  }
-
-  .title__fringe--red {
-    color: var(--c-red);
-    transform: scaleX(1.055);
-  }
-
-  .title__fringe--amber {
-    color: var(--c-amber);
-    transform: scaleX(1.03);
   }
 
   .lead {
     position: relative;
     z-index: var(--z-content);
-    margin: calc(34 * var(--u)) 0 0;
+    margin: calc(26 * var(--u)) 0 0;
     font-family: var(--font-serif);
     font-size: calc(32 * var(--u));
     font-weight: 400;
@@ -282,7 +257,6 @@ const LEAD = 'Pick a screen. Start building.';
   .others__list > li {
     display: flex;
     align-items: center;
-    gap: var(--row-gap);
     min-height: var(--chip-h);
   }
 
@@ -336,17 +310,6 @@ const LEAD = 'Pick a screen. Start building.';
     border-radius: calc(var(--badge-h) * 0.15);
   }
 
-  .tag {
-    padding: 0.2em 0.65em;
-    border: 1px solid rgb(255 255 255 / 0.16);
-    border-radius: 999px;
-    font-size: max(12px, calc(13 * var(--u)));
-    line-height: 1.3;
-    letter-spacing: 0.02em;
-    white-space: nowrap;
-    color: var(--c-text-muted);
-  }
-
   /* Below ~1000px the longest row (Windows, Linux and both store badges) wraps; reserve two rows so the swap never moves the page. */
   @media (max-width: 1000px) {
     .others__list {
@@ -366,11 +329,11 @@ const LEAD = 'Pick a screen. Start building.';
     }
 
     .title {
-      font-size: clamp(52px, 14.2vw, 104px);
+      font-size: clamp(42px, 12.6vw, 68px);
     }
 
     .lead {
-      margin-top: 22px;
+      margin-top: 16px;
       font-size: clamp(22px, 5.6vw, 30px);
     }
 
@@ -421,12 +384,6 @@ const LEAD = 'Pick a screen. Start building.';
   @media (prefers-reduced-motion: reduce) {
     .store:hover {
       transform: none;
-    }
-  }
-
-  @media (forced-colors: active) {
-    .title__fringe {
-      display: none;
     }
   }
 </style>
