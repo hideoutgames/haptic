@@ -1,0 +1,20 @@
+---
+/**
+ * Film-grain layer. The noise tile is generated once per page load by the
+ * inline script in Base.astro (no image asset), so this is just a styled div.
+ * Place inside a positioned parent; set `opacity` to override the default.
+ */
+interface Props {
+  opacity?: number;
+  class?: string;
+}
+
+const { opacity, class: className } = Astro.props;
+---
+
+<div
+  class:list={['grain-layer', className]}
+  style={opacity !== undefined ? `--grain-opacity: ${opacity}` : undefined}
+  aria-hidden="true"
+>
+</div>

@@ -1,0 +1,66 @@
+---
+import '@fontsource-variable/onest';
+import 'lenis/dist/lenis.css';
+import '../styles/global.css';
+
+interface Props {
+  title?: string;
+  description?: string;
+}
+
+const {
+  title = 'Haptic — the portable game engine',
+  description = 'Haptic by Hideout is a touch-first game engine you can bring anywhere: iPad, iPhone, Android, Mac, Windows and Linux.',
+} = Astro.props;
+---
+
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <title>{title}</title>
+    <meta name="description" content={description} />
+    <meta name="theme-color" content="#0b0a08" />
+    <meta property="og:title" content={title} />
+    <meta property="og:description" content={description} />
+    <meta property="og:type" content="website" />
+    <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
+    <link rel="preload" href="/fonts/licensed/block-berthold.woff2" as="font" type="font/woff2" crossorigin />
+    <link rel="preload" href="/fonts/licensed/recoleta-regular.woff2" as="font" type="font/woff2" crossorigin />
+    <script is:inline>
+      // Procedural film grain: one random noise tile per load, exposed to CSS
+      // as --grain-url. Generated at device-pixel resolution so each grain is
+      // a single physical pixel, like the mockup's noise filter.
+      (function () {
+        try {
+          var dpr = Math.min(window.devicePixelRatio || 1, 3);
+          var n = 256;
+          var c = document.createElement('canvas');
+          c.width = c.height = n;
+          var ctx = c.getContext('2d');
+          var img = ctx.createImageData(n, n);
+          var d = img.data;
+          for (var i = 0; i < d.length; i += 4) {
+            // Approximately gaussian, centred on mid-grey.
+            var g = (Math.random() + Math.random() + Math.random() - 1.5) * 300 + 128;
+            var v = g < 0 ? 0 : g > 255 ? 255 : g;
+            d[i] = d[i + 1] = d[i + 2] = v;
+            d[i + 3] = 255;
+          }
+          ctx.putImageData(img, 0, 0);
+          var s = document.documentElement.style;
+          s.setProperty('--grain-url', 'url(' + c.toDataURL('image/png') + ')');
+          s.setProperty('--grain-size', n / dpr + 'px');
+        } catch (e) {}
+      })();
+    </script>
+  </head>
+  <body>
+    <slot />
+    <script>
+      import { initSmoothScroll } from '../scripts/motion';
+      initSmoothScroll();
+    </script>
+  </body>
+</html>

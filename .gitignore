@@ -1,0 +1,12 @@
+node_modules/
+dist/
+.astro/
+.DS_Store
+*.log
+.env*
+!.env.example
+/scratch/
+
+# Commercial fonts (Block Berthold, Recoleta) – licence must allow public redistribution before committing
+public/fonts/licensed/*
+!public/fonts/licensed/README.md
