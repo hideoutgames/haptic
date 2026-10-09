@@ -24,9 +24,10 @@ const glow = glowBackground();
         widths={[800, 1280, 1920, 2560]}
         sizes="100vw"
         formats={['avif', 'webp']}
-        quality={80}
+        quality={55}
         loading="eager"
         decoding="async"
+        fetchpriority="high"
       />
     </div>
     <div
@@ -77,7 +78,6 @@ const glow = glowBackground();
       quality={82}
       loading="eager"
       decoding="async"
-      fetchpriority="high"
     />
   </div>
 </section>
@@ -114,6 +114,27 @@ const glow = glowBackground();
     background: linear-gradient(#000, transparent);
   }
 
+  /* Below the photo the page ramps from near-black to the navy that opens the
+     showcase (its first backdrop band), so there is no seam where the two
+     sections meet. It also covers whatever is left of the sky on viewports so
+     wide that the photo is taller than the hero. */
+  .hero__bg::before {
+    content: '';
+    position: absolute;
+    inset: auto 0 0;
+    z-index: 1;
+    height: calc(263.5 * var(--u));
+    background: linear-gradient(
+      to bottom,
+      transparent,
+      rgb(10 22 34 / 0.18) 38%,
+      rgb(10 22 34 / 0.35) 57%,
+      rgb(10 22 34 / 0.53) 76%,
+      rgb(10 22 34 / 0.85) 95%,
+      #0a1622
+    );
+  }
+
   .hero__sky {
     position: absolute;
     top: 0;
@@ -127,6 +148,8 @@ const glow = glowBackground();
   .hero__sky-img {
     width: 100%;
     height: auto;
+    /* The photo is a touch brighter than the mockup's once the grain is on top. */
+    filter: brightness(0.8);
   }
 
   .hero__glow {
@@ -160,7 +183,7 @@ const glow = glowBackground();
   }
 
   .presents {
-    top: calc(147 * var(--u));
+    top: calc(146 * var(--u));
     animation: rise 0.9s var(--ease-out) 0.1s both;
   }
 
@@ -271,12 +294,12 @@ const glow = glowBackground();
     width: calc(14 * var(--u));
     height: auto;
     min-width: 11px;
-    margin-top: calc(-0.7 * var(--u));
+    margin-top: calc(1.4 * var(--u));
   }
 
   @media (prefers-reduced-motion: no-preference) {
     .scroll__chevron {
-      animation: bob 2.4s ease-in-out 1.8s infinite;
+      animation: bob 2.4s ease-in-out 1.8s 2;
     }
   }
 

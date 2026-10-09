@@ -1,9 +1,11 @@
 /**
- * Header behaviour: menu toggle (with the H → bar morph), keyboard and
- * outside-click handling, and hide-on-scroll-down / show-on-scroll-up.
+ * Header behaviour: menu toggle (with the H → bar morph) plus keyboard and
+ * outside-click handling. The menu works on its own; GSAP is only fetched, in
+ * the background, to tween the logo morph.
  */
-import { gsap, prefersReducedMotion } from '../../scripts/motion';
 import { logoPaths } from './logo-geometry';
+
+type Gsap = (typeof import('../../scripts/motion'))['gsap'];
 
 const header = document.querySelector<HTMLElement>('[data-site-header]');
 const button = header?.querySelector<HTMLButtonElement>('[data-menu-button]');
@@ -24,6 +26,14 @@ function initHeader(header: HTMLElement, button: HTMLButtonElement, menu: HTMLEl
 
   // ---- H <-> bar morph ----------------------------------------------------
   const morph = { t: 0 };
+  const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)');
+
+  // Until GSAP has loaded (or if it never does) the logo just snaps.
+  let gsap: Gsap | undefined;
+  import('../../scripts/motion').then(
+    (motion) => (gsap = motion.gsap),
+    () => {},
+  );
 
   function renderLogo() {
     const d = logoPaths(morph.t);
@@ -33,8 +43,8 @@ function initHeader(header: HTMLElement, button: HTMLButtonElement, menu: HTMLEl
   }
 
   function morphTo(target: number) {
-    gsap.killTweensOf(morph);
-    if (prefersReducedMotion()) {
+    gsap?.killTweensOf(morph);
+    if (!gsap || reducedMotion.matches) {
       morph.t = target;
       renderLogo();
       return;
@@ -54,11 +64,9 @@ function initHeader(header: HTMLElement, button: HTMLButtonElement, menu: HTMLEl
 
     header.toggleAttribute('data-open', open);
     button.setAttribute('aria-expanded', String(open));
-    button.setAttribute('aria-label', open ? 'Close menu' : 'Open menu');
     morphTo(open ? 1 : 0);
 
     if (open) {
-      setHidden(false);
       menu.querySelector<HTMLElement>('a[href]')?.focus({ preventScroll: true });
     } else if (restoreFocus) {
       button.focus({ preventScroll: true });
@@ -93,45 +101,4 @@ function initHeader(header: HTMLElement, button: HTMLButtonElement, menu: HTMLEl
   window.addEventListener('pageshow', (event) => {
     if (event.persisted) setOpen(false);
   });
-
-  // ---- Hide on scroll down, show on scroll up -----------------------------
-  const TOP_ZONE = 48;
-  const THRESHOLD = 10;
-  let hidden = false;
-  let lastY = window.scrollY;
-  let run = 0; // signed distance scrolled since the direction last changed
-  let frame = 0;
-
-  function setHidden(next: boolean) {
-    if (next === hidden) return;
-    hidden = next;
-    header.toggleAttribute('data-hidden', hidden);
-  }
-
-  function onScroll() {
-    frame = 0;
-    const y = window.scrollY;
-    const dy = y - lastY;
-    lastY = y;
-
-    if (open || y < TOP_ZONE) {
-      run = 0;
-      setHidden(false);
-      return;
-    }
-    run = Math.sign(dy) === Math.sign(run) ? run + dy : dy;
-    if (run > THRESHOLD) setHidden(true);
-    else if (run < -THRESHOLD) setHidden(false);
-  }
-
-  window.addEventListener(
-    'scroll',
-    () => {
-      frame ||= requestAnimationFrame(onScroll);
-    },
-    { passive: true },
-  );
-
-  // Keyboard users tabbing to the button should always see it.
-  header.addEventListener('focusin', () => setHidden(false));
 }
