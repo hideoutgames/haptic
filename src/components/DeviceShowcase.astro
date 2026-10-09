@@ -15,6 +15,10 @@
  * --u capped by the viewport height so the composition always fits the pinned
  * screen. The MacBook is the layout anchor: the backdrop bands and the text
  * are positioned from the base of its frame (--ay).
+ *
+ * On phones and portrait tablets the devices are stacked under the copy
+ * instead: the stage turns into a column and the devices are sized to the
+ * space the copy leaves (see the last media query).
  */
 import Grain from './Grain.astro';
 import Device from './showcase/Device.astro';
@@ -348,6 +352,7 @@ const sizesFor = (stacked: string, side: string) => `${STACKED_QUERY} ${stacked}
      centred in it. */
   @media (max-width: 820px) and (max-aspect-ratio: 1/1) {
     .showcase {
+      /* Scale of the copy's small spacings (the devices have their own, below). */
       --k: calc(100vw * 0.00138);
       --kb: calc(100svh / 940);
       /* Horizon of the backdrop (the MacBook base stands on it), as a share of
@@ -413,11 +418,16 @@ const sizesFor = (stacked: string, side: string) => `${STACKED_QUERY} ${stacked}
     .rig__group {
       --rw: min(108vw, calc(100cqh / var(--gr)));
       --gr: 1.1;
-      /* The group starts centred on the MacBook alone and settles upwards as
-         the iPad and iPhone join (showcase.ts): percent of its height. */
+      /* The group is centred first on the MacBook alone, then on the MacBook
+         and iPad, and settles upwards as they join (showcase.ts): half of
+         the height the missing devices add, in percent of the group's. */
       --settle-mac: 22.5;
       --settle-ipad: 4.5;
       --k: calc(var(--rw) / 723);
+      /* How far the group runs past each screen edge, and the inset from the
+         group's ends that keeps the devices on screen (0 when it all fits). */
+      --bleed: max(0px, calc((var(--rw) - 100vw) / 2));
+      --edge: min(calc(var(--bleed) + 10px), calc(var(--bleed) * 3));
 
       display: block;
       position: relative;
@@ -432,16 +442,19 @@ const sizesFor = (stacked: string, side: string) => `${STACKED_QUERY} ${stacked}
       top: calc(var(--rw) * -0.0573);
     }
 
+    /* The iPad and iPhone reach the ends of the MacBook base (0.3% and -0.67%
+       are its ends, allowing for their transparent margins), so no stub of
+       the base sticks out beside them, but stay 10px inside the screen edge
+       when the group runs past it (--edge). */
     .rig :global(.device--ipad) {
-      left: 6.06%;
+      left: calc(var(--edge) + 0.3%);
       top: calc(var(--rw) * 0.4585);
       width: 76%;
     }
 
-    /* Its right edge reaches the MacBook base's, so no stub of the base
-       sticks out beside it. */
     .rig :global(.device--iphone) {
-      left: 57.9%;
+      left: auto;
+      right: calc(var(--edge) - 0.67%);
       top: calc(var(--rw) * 0.3668);
       width: 37%;
     }

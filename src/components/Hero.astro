@@ -121,8 +121,7 @@ const skySide = `--sky-left: ${skyEdges.left}; --sky-right: ${skyEdges.right}; -
 
   /* Below the photo the page ramps from near-black to the navy that opens the
      showcase (its first backdrop band), so there is no seam where the two
-     sections meet. It also covers whatever is left of the sky on viewports so
-     wide that the photo is taller than the hero. */
+     sections meet. */
   .hero__bg::before {
     content: '';
     position: absolute;
@@ -187,10 +186,16 @@ const skySide = `--sky-left: ${skyEdges.left}; --sky-right: ${skyEdges.right}; -
       );
     }
 
+    /* The fill darkens away from the photo (zero at its edge, so no seam), which
+       keeps the far sides from reading as a flat horizon band. */
     .hero__sky-side {
+      --gap: calc(50% - 640 * var(--u));
+      --dim: rgb(1 0 0 / 0.5) calc(100% - 1000 * var(--u)), transparent;
       position: absolute;
       inset: 0;
       background:
+        linear-gradient(to right, var(--dim)) left / var(--gap) 100% no-repeat,
+        linear-gradient(to left, var(--dim)) right / var(--gap) 100% no-repeat,
         var(--sky-left) left / 50% 100% no-repeat,
         var(--sky-right) right / 50% 100% no-repeat;
     }

@@ -8,6 +8,8 @@
  *
  * Everything is scrubbed, so scrolling back plays it in reverse. Offsets use
  * xPercent/yPercent of each device, so the same timeline serves every layout.
+ * (The stacked layout also lifts the group of devices as they join, to keep
+ * it centred under the copy; the CSS says by how much.)
  * With reduced motion nothing runs and the CSS shows the final state.
  *
  * There is a single matchMedia context on purpose. Reverting and rebuilding

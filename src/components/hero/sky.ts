@@ -77,6 +77,9 @@ function mulberry32(seed: number): () => number {
   };
 }
 
+/** Shortest decimal form: `.3`, `12`, `418.4`. */
+const num = (v: number, digits = 1): string => String(+v.toFixed(digits)).replace(/^0\./, '.');
+
 function pickTint(r: number): string {
   let acc = 0;
   for (const tint of TINTS) {
@@ -108,11 +111,11 @@ export function starTile(): string {
       const step = Math.floor(rand() * ALPHA_STEPS);
       const alpha = cls.alpha[0] + ((step + 0.5) / ALPHA_STEPS) * (cls.alpha[1] - cls.alpha[0]);
       const tint = pickTint(rand());
-      const key = `${cls.size}|${tint}|${alpha.toFixed(2)}`;
-      const attrs = `stroke="${tint}" stroke-width="${cls.size}" stroke-opacity="${alpha.toFixed(2)}"`;
-      const stretch = (0.05 + rand() * 0.5 * cls.size).toFixed(2);
+      const key = `${cls.size}|${tint}|${num(alpha, 2)}`;
+      const attrs = `stroke="${tint}" stroke-width="${cls.size}" stroke-opacity="${num(alpha, 2)}"`;
+      const stretch = 0.05 + rand() * 0.5 * cls.size;
       const group = groups.get(key) ?? { attrs, d: [] };
-      group.d.push(`M${x.toFixed(1)} ${(y + 2).toFixed(1)}h${stretch}`);
+      group.d.push(`M${num(x)} ${num(y + 2)}h${num(stretch, 2)}`);
       groups.set(key, group);
     }
   }
