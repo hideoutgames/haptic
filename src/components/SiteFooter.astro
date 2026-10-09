@@ -1,13 +1,13 @@
 ---
 /**
- * Page footer: brand line and legal notice on the left, the nav on the right
- * (one row on desktop, as in the mockup), then the oversized HAPTIC word
- * cropped by the bottom edge of the page (decorative, so aria-hidden).
+ * Page footer: the legal notice on the left and the nav on the right, both in
+ * the same small muted type (one row on desktop), then the oversized HAPTIC
+ * word cropped by the bottom edge of the page (decorative, so aria-hidden).
  *
  * The text row uses the shared --u scale; the giant word is sized in vw, so its
  * crop stays identical at any width and it always runs off the right edge.
- * The legal line adds height to the row, which the giant word's top margin
- * gives back, so the footer keeps the mockup's overall proportions.
+ * The row is centred where the mockup's footer line sits, and the giant word's
+ * top margin keeps the footer at the mockup's overall height.
  *
  * Legal: Bru Development ENK is the company; Haptic is an unregistered
  * trademark (™, not ®). The year is computed when the site is built.
@@ -28,29 +28,22 @@ const LINKS = [
 
 <footer class="footer">
   <div class="row">
-    <p class="brand">Haptic™, the portable game engine.</p>
+    <p class="legal">
+      <span>&copy; {YEAR} <span class="co">{COMPANY}</span>.</span>
+      <span>Haptic™ is a trademark of <span class="co">{COMPANY}</span>.</span>
+    </p>
 
     <nav class="nav" aria-label="Footer">
       <ul>
         {
           LINKS.map((link) => (
             <li>
-              {link.label !== LINKS[0].label && (
-                <span class="sep" aria-hidden="true">
-                  &lt;&gt;
-                </span>
-              )}
               <a href={withBase(link.href)}>{link.label}</a>
             </li>
           ))
         }
       </ul>
     </nav>
-
-    <p class="legal">
-      <span>&copy; {YEAR} <span class="co">{COMPANY}</span>.</span>
-      <span>Haptic™ is a trademark of <span class="co">{COMPANY}</span>.</span>
-    </p>
   </div>
 
   <div class="giant" aria-hidden="true">
@@ -62,33 +55,32 @@ const LINKS = [
 
 <style>
   .footer {
-    --legal-size: max(13px, calc(15 * var(--u)));
-    --legal-lh: 1.45;
-    --legal-gap: calc(6 * var(--u));
+    --text-size: max(13px, calc(15 * var(--u)));
+    --text-lh: 1.45;
+    /* Centre of the text row, measured from the footer top (the mockup's footer line). */
+    --row-mid: calc(42.8 * var(--u));
     position: relative;
     isolation: isolate;
     overflow: hidden;
     background: var(--c-bg);
   }
 
-  /* Two lines on the left (brand, legal), the nav on the right sharing the brand line's baseline. */
   .row {
     position: relative;
     z-index: var(--z-content);
-    display: grid;
-    grid-template-columns: 1fr auto;
-    grid-template-areas:
-      'brand nav'
-      'legal legal';
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: space-between;
     align-items: baseline;
-    column-gap: calc(48 * var(--u));
-    row-gap: var(--legal-gap);
+    gap: 8px calc(48 * var(--u));
     /* Above 1600px the text keeps the centred 1280-unit composition; the giant word stays full-bleed. */
     width: min(100%, calc(1280 * var(--u)));
     margin-inline: auto;
-    padding: calc(28.4 * var(--u)) calc(116 * var(--u)) 0 calc(115 * var(--u));
-    font-size: calc(24 * var(--u));
-    line-height: 1.2;
+    padding: calc(var(--row-mid) - var(--text-size) * var(--text-lh) / 2) calc(116 * var(--u)) 0 calc(115 * var(--u));
+    font-size: var(--text-size);
+    line-height: var(--text-lh);
+    letter-spacing: 0.005em;
+    color: var(--c-text-muted);
   }
 
   /* Hairline above the row, fading out at both ends. */
@@ -102,21 +94,11 @@ const LINKS = [
     background: linear-gradient(90deg, transparent, rgb(255 255 255 / 0.16) 14%, rgb(255 255 255 / 0.16) 86%, transparent);
   }
 
-  .brand {
-    grid-area: brand;
-    margin: 0;
-  }
-
   .legal {
-    grid-area: legal;
     display: flex;
     flex-wrap: wrap;
     column-gap: 0.9em;
     margin: 0;
-    font-size: var(--legal-size);
-    line-height: var(--legal-lh);
-    letter-spacing: 0.005em;
-    color: var(--c-text-muted);
   }
 
   /* A company name never breaks across lines. */
@@ -124,51 +106,35 @@ const LINKS = [
     white-space: nowrap;
   }
 
-  .nav {
-    grid-area: nav;
-  }
-
   .nav ul {
     display: flex;
     flex-wrap: wrap;
-    row-gap: 4px;
+    gap: 4px 1.6em;
     margin: 0;
     padding: 0;
     list-style: none;
   }
 
-  /* Centre the separator on the link text (the touch rule below makes the link taller than its line). */
-  .nav li {
-    display: flex;
-    align-items: center;
-  }
-
   .nav a {
-    text-underline-offset: 0.18em;
-    text-decoration-thickness: 0.06em;
+    color: inherit;
+    text-underline-offset: 0.22em;
+    text-decoration-thickness: 1px;
+    transition: color 0.15s ease;
   }
 
   .nav a:hover {
+    color: var(--c-text);
     text-decoration-line: underline;
-  }
-
-  /* Spacing measured from the mockup; the first gap is a little wider. */
-  .sep {
-    margin: 0 calc(13 * var(--u));
-  }
-
-  .nav li:nth-child(2) .sep {
-    margin-left: calc(20 * var(--u));
   }
 
   /* Giant word: 428px at 1280 (33.4vw). Only its top half shows (150.5px, 11.76vw).
      Above the grain layers: the mockup's glyph is a flat cut-out, the grain stays around it.
-     The top margin is the mockup's 76.8 minus the legal line (and the gap above it) that the row now has extra. */
+     Its top sits 134u below the footer top, as in the mockup. */
   .giant {
     position: relative;
     z-index: var(--z-media);
     height: calc(100vw * 150.5 / 1280);
-    margin-top: calc(76.8 * var(--u) - var(--legal-size) * var(--legal-lh) - var(--legal-gap));
+    margin-top: calc(134 * var(--u) - var(--row-mid) - var(--text-size) * var(--text-lh) / 2);
     overflow: hidden;
     color: var(--c-giant);
     user-select: none;
@@ -186,19 +152,16 @@ const LINKS = [
 
   @media (max-width: 820px) {
     .footer {
-      --legal-gap: 14px;
+      --text-size: max(13px, min(3.6vw, 15px));
     }
 
+    /* Stacked: nav first, the legal notice last. */
     .row {
       width: 100%;
-      grid-template-columns: 1fr;
-      grid-template-areas:
-        'brand'
-        'nav'
-        'legal';
-      justify-items: start;
+      flex-direction: column-reverse;
+      align-items: flex-start;
+      gap: 14px;
       padding: 28px var(--gutter) 0;
-      font-size: clamp(15px, 4.6vw, 22px);
     }
 
     .row::before {
@@ -209,20 +172,6 @@ const LINKS = [
     .legal {
       flex-direction: column;
       column-gap: 0;
-      font-size: max(13px, min(3.6vw, 15px));
-    }
-
-    /* The whole nav stays on one line down to 320px (about 19.6em wide), so no separator is stranded at a line start. */
-    .nav {
-      font-size: min(clamp(15px, 4.6vw, 22px), calc((100vw - 2 * var(--gutter)) / 19.6));
-    }
-
-    .sep {
-      margin: 0 0.6em;
-    }
-
-    .nav li:nth-child(2) .sep {
-      margin-left: 0.6em;
     }
 
     .giant {

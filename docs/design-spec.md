@@ -141,11 +141,9 @@ the Haptic Pro note and "View Pricing for more details.", then an "Other platfor
 ## 5. Footer (≈ 2100 → 2384.5 page end)
 
 - Dark (`#0a0908`) with grain.
-- Mockup placeholder "One-line Footer. Placeholder right now." (Onest 500 **24px**, left x = 116.5, ink y 2133.5 → 2156) is replaced by
-  "Haptic™, the portable game engine." on the same line, with a muted legal line under it:
-  "© {year} Bru Development ENK.  Haptic™ is a trademark of Bru Development ENK." (™ = unregistered trademark).
-- Nav, same line, right aligned to x ≈ 1163: `Home   <>  Pricing  <>  Signup  <>  About`, Onest 500 24px
-  (ink x: Home 709.5–771.5, `<>` 795.5–816.5, Pricing 835–908.5, `<>` 926.5–948, Signup 966–1041.5, `<>` 1059–1080, About 1097–1163).
+- Mockup placeholder footer line is replaced by one row of small muted text (≈15px at 1280, `--c-text-muted`) centred on the
+  mockup's footer line: legal notice on the left — "© {year} Bru Development ENK.  Haptic™ is a trademark of Bru Development ENK."
+  (™ = unregistered trademark) — and the nav (Home · Pricing · Signup · About, same size/colour, white on hover) on the right.
 - **Giant "HAPTIC"**: Block Berthold, colour `#676767`, **≈ 428px** (≈ 33.4vw at 1280), starts at x ≈ −14.8 (so the H's ink starts at x ≈ 1.5),
   cap top at y ≈ 2234 and baseline ≈ 150px **below** the page bottom, so only the top ~half of the letters shows and the word runs off the right edge (the C is cut).
 - The page ends at 2384.5 (mockup height).
