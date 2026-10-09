@@ -57,6 +57,7 @@
 
   /* Grain (texture is generated at runtime in Base.astro) */
   --grain-opacity: 0.25;
+  --grain-mid-opacity: 0.14;
 
   /* Stacking inside a section: background < content < grain < screenshots */
   --z-bg: 0;
@@ -142,7 +143,7 @@ button {
   border: 0;
 }
 
-/* Procedural film grain (two tiles generated in Base.astro). Use <Grain />
+/* Procedural film grain (three tiles generated in Base.astro). Use <Grain />
    inside any positioned section: it sits above backgrounds/text and below
    screenshots. The layers must not be wrapped in an element that creates a
    stacking context of its own, or the blend modes lose their backdrop.
@@ -172,6 +173,14 @@ button {
 .grain-layer--dark {
   background-image: var(--grain-dark, none);
   mix-blend-mode: multiply;
+}
+
+/* Overlay noise is zero at black and white, so it lifts mid-tone grain to the
+   mockup's strength without changing the black lift compensated above. */
+.grain-layer--mid {
+  background-image: var(--grain-mid, none);
+  mix-blend-mode: overlay;
+  opacity: var(--grain-mid-opacity);
 }
 
 @media (forced-colors: active) {
