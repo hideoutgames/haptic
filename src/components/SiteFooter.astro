@@ -48,8 +48,8 @@ const LINKS = [
     </nav>
 
     <p class="legal">
-      <span>&copy; {YEAR} {COMPANY}.</span>
-      <span>Haptic™ is a trademark of {COMPANY}.</span>
+      <span>&copy; {YEAR} <span class="co">{COMPANY}</span>.</span>
+      <span>Haptic™ is a trademark of <span class="co">{COMPANY}</span>.</span>
     </p>
   </div>
 
@@ -119,6 +119,11 @@ const LINKS = [
     color: var(--c-text-muted);
   }
 
+  /* A company name never breaks across lines. */
+  .co {
+    white-space: nowrap;
+  }
+
   .nav {
     grid-area: nav;
   }
@@ -132,8 +137,10 @@ const LINKS = [
     list-style: none;
   }
 
+  /* Centre the separator on the link text (the touch rule below makes the link taller than its line). */
   .nav li {
     display: flex;
+    align-items: center;
   }
 
   .nav a {
@@ -203,6 +210,11 @@ const LINKS = [
       flex-direction: column;
       column-gap: 0;
       font-size: max(13px, min(3.6vw, 15px));
+    }
+
+    /* The whole nav stays on one line down to 320px (about 19.6em wide), so no separator is stranded at a line start. */
+    .nav {
+      font-size: min(clamp(15px, 4.6vw, 22px), calc((100vw - 2 * var(--gutter)) / 19.6));
     }
 
     .sep {

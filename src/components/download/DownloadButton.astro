@@ -181,8 +181,8 @@ const { platform, hidden = false } = Astro.props;
     }
   }
 
-  /* No platform detected on a phone: three compact buttons share one row, same height as a single one. */
-  @media (max-width: 560px) {
+  /* No platform detected on a small screen (three full buttons need about 650px): three compact buttons share one row, same height as a single one. */
+  @media (max-width: 700px) {
     :global([data-platform='any']) .dl {
       flex: 1 1 0;
       min-width: 0;

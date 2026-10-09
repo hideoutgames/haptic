@@ -310,8 +310,9 @@ const LEAD = 'Build from anywhere, anytime.';
     border-radius: calc(var(--badge-h) * 0.15);
   }
 
-  /* Below ~1000px the longest row (Windows, Linux and both store badges) wraps; reserve two rows so the swap never moves the page. */
-  @media (max-width: 1000px) {
+  /* The longest row (any four of the five platforms) is about 525px wide. The list is at least 600px wide from 650px up,
+     so only narrower screens can wrap it; reserve two rows there so the swap never moves the page. */
+  @media (max-width: 700px) {
     .others__list {
       min-height: calc(var(--chip-h) * 2 + var(--row-gap));
     }

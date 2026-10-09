@@ -134,12 +134,16 @@ Devices (mockup composition, the final state of the scroll animation):
 
 ## 4. Download section (new, not in mockup)
 
-OS-aware primary download (see brief in the build prompt). Follows the same typography/colour language.
+"Get Haptic" (Onest 700, white, 72px at 1280, no colour fringes), serif lead "Build from anywhere, anytime.",
+OS-aware primary button (official App Store / Google Play badges for mobile, custom desktop buttons),
+the Haptic Pro note and "View Pricing for more details.", then an "Other platforms" row.
 
 ## 5. Footer (≈ 2100 → 2384.5 page end)
 
 - Dark (`#0a0908`) with grain.
-- "One-line Footer. Placeholder right now.": Onest 500 **24px**, left x = 116.5, ink y 2133.5 → 2156.
+- Mockup placeholder "One-line Footer. Placeholder right now." (Onest 500 **24px**, left x = 116.5, ink y 2133.5 → 2156) is replaced by
+  "Haptic™, the portable game engine." on the same line, with a muted legal line under it:
+  "© {year} Bru Development ENK.  Haptic™ is a trademark of Bru Development ENK." (™ = unregistered trademark).
 - Nav, same line, right aligned to x ≈ 1163: `Home   <>  Pricing  <>  Signup  <>  About`, Onest 500 24px
   (ink x: Home 709.5–771.5, `<>` 795.5–816.5, Pricing 835–908.5, `<>` 926.5–948, Signup 966–1041.5, `<>` 1059–1080, About 1097–1163).
 - **Giant "HAPTIC"**: Block Berthold, colour `#676767`, **≈ 428px** (≈ 33.4vw at 1280), starts at x ≈ −14.8 (so the H's ink starts at x ≈ 1.5),
