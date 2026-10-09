@@ -10,25 +10,30 @@ import Grain from './Grain.astro';
 import nightSky from '../assets/bg/night-sky.jpg';
 import editorTablet from '../assets/editor/editor-tablet.jpg';
 import { glowBackground, GLOW_HEIGHT } from './hero/glow';
+import { skyEdges, starTile } from './hero/sky';
 
 const glow = glowBackground();
+const skySide = `--sky-left: ${skyEdges.left}; --sky-right: ${skyEdges.right}; --sky-stars: ${starTile()}`;
 ---
 
 <section class="hero" aria-labelledby="hero-title" data-hero>
   <div class="hero__bg" aria-hidden="true">
     <div class="hero__sky" data-parallax="0.06">
-      <Picture
-        class="hero__sky-img"
-        src={nightSky}
-        alt=""
-        widths={[800, 1280, 1920, 2560]}
-        sizes="100vw"
-        formats={['avif', 'webp']}
-        quality={55}
-        loading="eager"
-        decoding="async"
-        fetchpriority="high"
-      />
+      <div class="hero__sky-side" style={skySide}></div>
+      <div class="hero__sky-photo">
+        <Picture
+          class="hero__sky-img"
+          src={nightSky}
+          alt=""
+          widths={[800, 1280, 1920, 2560]}
+          sizes="min(100vw, 1600px)"
+          formats={['avif', 'webp']}
+          quality={55}
+          loading="eager"
+          decoding="async"
+          fetchpriority="high"
+        />
+      </div>
     </div>
     <div
       class="hero__glow"
@@ -145,12 +150,64 @@ const glow = glowBackground();
     mask-image: linear-gradient(to bottom, #000 82%, transparent);
   }
 
+  /* Sized like the glow (scales with --u, centred), so the photo keeps its
+     scale relative to the content once --u stops growing at 1600px. */
+  .hero__sky-photo {
+    width: min(100%, calc(1280 * var(--u)));
+    margin-inline: auto;
+  }
+
   .hero__sky-img {
     width: 100%;
     height: auto;
     /* The grain lifts dark tones; pulling the photo's black level down keeps the
        sky as dark as the mockup's (gain 0.95, offset about -4.5 levels). */
     filter: brightness(0.92) contrast(1.035);
+  }
+
+  /* Wider than 1600px the photo no longer reaches the edges: its sides feather
+     out over a gradient continuing its edge colours, with a procedural starfield
+     (see hero/sky.ts). Hidden below, where the photo covers the full width. */
+  @media (min-width: 1601px) {
+    .hero__sky-photo {
+      /* The photo fades over the gap it leaves, up to 240 mockup px. */
+      --feather: clamp(0px, calc(50vw - 640 * var(--u)), calc(240 * var(--u)));
+      mask-image: linear-gradient(
+        to right,
+        transparent,
+        rgb(0 0 0 / 0.16) calc(var(--feather) * 0.25),
+        rgb(0 0 0 / 0.5) calc(var(--feather) * 0.5),
+        rgb(0 0 0 / 0.84) calc(var(--feather) * 0.75),
+        #000 var(--feather),
+        #000 calc(100% - var(--feather)),
+        rgb(0 0 0 / 0.84) calc(100% - var(--feather) * 0.75),
+        rgb(0 0 0 / 0.5) calc(100% - var(--feather) * 0.5),
+        rgb(0 0 0 / 0.16) calc(100% - var(--feather) * 0.25),
+        transparent
+      );
+    }
+
+    .hero__sky-side {
+      position: absolute;
+      inset: 0;
+      background:
+        var(--sky-left) left / 50% 100% no-repeat,
+        var(--sky-right) right / 50% 100% no-repeat;
+    }
+
+    /* Stars stop at each side's horizon: the foothills on the left, the dark slope on the right. */
+    .hero__sky-side::before {
+      content: '';
+      position: absolute;
+      inset: 0;
+      background: var(--sky-stars) 50% 0 / auto 100% repeat-x;
+      mask-image:
+        linear-gradient(to bottom, #000 64%, transparent 75%),
+        linear-gradient(to bottom, #000 41%, transparent 52%);
+      mask-size: 50% 100%;
+      mask-position: left, right;
+      mask-repeat: no-repeat;
+    }
   }
 
   .hero__glow {
@@ -381,7 +438,8 @@ const glow = glowBackground();
       padding-top: 92px;
     }
 
-    .hero__sky {
+    .hero__sky,
+    .hero__sky-photo {
       height: 640px;
     }
 

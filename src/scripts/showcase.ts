@@ -27,13 +27,14 @@ const T = { ipad: 1.2, phone: 5, open: 6.6, end: 9.2 };
 export function initShowcase(root: HTMLElement): void {
   const pick = <E extends HTMLElement>(selector: string) => root.querySelector<E>(selector);
   const stage = pick('[data-stage]');
+  const group = pick('[data-group]');
   const mac = pick('[data-device="mac"]');
   const ipad = pick('[data-device="ipad"]');
   const iphone = pick('[data-device="iphone"]');
   const projects = pick('[data-intro]');
   const fill = pick('[data-progress]');
   const copy = gsap.utils.toArray<HTMLElement>('[data-copy]', root);
-  if (!stage || !mac || !ipad || !iphone || !fill || copy.length < 3) return;
+  if (!stage || !group || !mac || !ipad || !iphone || !fill || copy.length < 3) return;
 
   const mm = gsap.matchMedia();
 
@@ -97,6 +98,15 @@ export function initShowcase(root: HTMLElement): void {
       { opacity: 1, xPercent: 0, yPercent: 0, scale: 1, rotationY: 0, duration: 2.6, ease: 'power3.out' },
       T.ipad,
     );
+    // Stacked layout: the group of devices (centred under the copy) follows
+    // as they join. The CSS holds the offsets; on desktop they are 0.
+    const settle = (name: string) => parseFloat(getComputedStyle(group).getPropertyValue(name)) || 0;
+    tl.fromTo(
+      group,
+      { yPercent: () => settle('--settle-mac') },
+      { yPercent: () => settle('--settle-ipad'), duration: 2.6, ease: 'power3.out' },
+      T.ipad,
+    );
     tl.to(copy[0], { opacity: 0, yPercent: -30, duration: 0.7 }, T.ipad);
     tl.to(copy[1], { opacity: 1, yPercent: 0, duration: 0.7 }, T.ipad + 0.35);
 
@@ -107,6 +117,7 @@ export function initShowcase(root: HTMLElement): void {
       { opacity: 1, xPercent: 0, yPercent: 0, scale: 1, duration: 2.2, ease: 'back.out(1.5)' },
       T.phone,
     );
+    tl.to(group, { yPercent: 0, duration: 2.2, ease: 'power2.out' }, T.phone);
     tl.to(copy[1], { opacity: 0, yPercent: -30, duration: 0.7 }, T.phone);
     tl.to(copy[2], { opacity: 1, yPercent: 0, duration: 0.7 }, T.phone + 0.35);
 

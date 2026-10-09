@@ -83,6 +83,9 @@ const isCurrent = (p: Page) => p.href === currentPath;
     --pad-l: calc(23 * var(--m));
     --pad-r: calc(24 * var(--m));
     --row: calc(33 * var(--m));
+    /* Nearly opaque: the hero's giant lettering must not read through the panel. */
+    --fill-a: 0.985;
+    --fill-top: 25 27 28;
     position: absolute;
     top: calc(var(--safe-top) + 77 * var(--m));
     left: 50%;
@@ -113,9 +116,8 @@ const isCurrent = (p: Page) => p.href === currentPath;
   .menu__surface,
   .menu__notch {
     position: absolute;
-    background: rgb(24 24 24 / 0.86);
-    -webkit-backdrop-filter: blur(calc(24 * var(--m))) saturate(1.2);
-    backdrop-filter: blur(calc(24 * var(--m))) saturate(1.2);
+    -webkit-backdrop-filter: blur(calc(40 * var(--m))) saturate(1.2);
+    backdrop-filter: blur(calc(40 * var(--m))) saturate(1.2);
     opacity: 0;
     transition: opacity 0.22s ease;
   }
@@ -123,6 +125,16 @@ const isCurrent = (p: Page) => p.href === currentPath;
   .menu__surface {
     inset: 0;
     border-radius: calc(16 * var(--m));
+    /* Dark at the top, warming toward the bottom like the mockup's glass over the
+       hero glow; baked in because so little of the backdrop now shows through. */
+    background: linear-gradient(
+      rgb(var(--fill-top) / var(--fill-a)),
+      rgb(36 36 32 / var(--fill-a)) 25%,
+      rgb(52 46 40 / var(--fill-a)) 50%,
+      rgb(54 47 42 / var(--fill-a)) 62%,
+      rgb(51 34 31 / var(--fill-a)) 85%,
+      rgb(48 30 31 / var(--fill-a))
+    );
     box-shadow: 0 calc(14 * var(--m)) calc(40 * var(--m)) rgb(0 0 0 / 0.28);
   }
 
@@ -132,6 +144,7 @@ const isCurrent = (p: Page) => p.href === currentPath;
     margin-left: calc(-42.5 * var(--m));
     height: calc(18.24 * var(--m));
     bottom: calc(100% - 0.5 * var(--m));
+    background: rgb(var(--fill-top) / var(--fill-a));
     clip-path: url(#menu-notch);
   }
 

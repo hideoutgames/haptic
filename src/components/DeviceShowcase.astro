@@ -81,34 +81,36 @@ const sizesFor = (stacked: string, side: string) => `${STACKED_QUERY} ${stacked}
     </div>
 
     <div class="rig">
-      <Device
-        kind="mac"
-        frame={macFrame}
-        shot={editorTablet}
-        alt="The Haptic editor on a MacBook Pro."
-        frameWidths={[720, 1080, 1446, 1808]}
-        shotWidths={[1180, 1760, 2360]}
-        sizes={sizesFor('100vw', 'min(56.5vw, 904px)')}
-      />
-      <Device
-        kind="ipad"
-        frame={ipadFrame}
-        shot={editorTablet}
-        alt="The Haptic editor on an iPad Pro."
-        frameWidths={[520, 780, 1040]}
-        shotWidths={[900, 1400, 2360]}
-        sizes={sizesFor('72vw', 'min(32vw, 513px)')}
-      />
-      <Device
-        kind="iphone"
-        frame={iphoneFrame}
-        shot={editorPhone}
-        alt="The Haptic editor on an iPhone."
-        intro={{ shot: projectsPhone, alt: 'The Haptic Projects screen on an iPhone, listing a project to open.' }}
-        frameWidths={[240, 480, 720]}
-        shotWidths={[375, 750]}
-        sizes={sizesFor('32vw', 'min(14.5vw, 232px)')}
-      />
+      <div class="rig__group" data-group>
+        <Device
+          kind="mac"
+          frame={macFrame}
+          shot={editorTablet}
+          alt="The Haptic editor on a MacBook Pro."
+          frameWidths={[720, 1080, 1446, 1808]}
+          shotWidths={[1180, 1760, 2360]}
+          sizes={sizesFor('108vw', 'min(56.5vw, 904px)')}
+        />
+        <Device
+          kind="ipad"
+          frame={ipadFrame}
+          shot={editorTablet}
+          alt="The Haptic editor on an iPad Pro."
+          frameWidths={[520, 780, 1040, 1400]}
+          shotWidths={[900, 1400, 2360]}
+          sizes={sizesFor('86vw', 'min(32vw, 513px)')}
+        />
+        <Device
+          kind="iphone"
+          frame={iphoneFrame}
+          shot={editorPhone}
+          alt="The Haptic editor on an iPhone."
+          intro={{ shot: projectsPhone, alt: 'The Haptic Projects screen on an iPhone, listing a project to open.' }}
+          frameWidths={[240, 480, 720]}
+          shotWidths={[375, 750]}
+          sizes={sizesFor('43vw', 'min(14.5vw, 232px)')}
+        />
+      </div>
     </div>
   </div>
 </section>
@@ -290,6 +292,11 @@ const sizesFor = (stacked: string, side: string) => `${STACKED_QUERY} ${stacked}
     aspect-ratio: 4256 / 2834;
   }
 
+  /* Only the stacked layout gives the group a box of its own. */
+  .rig__group {
+    display: contents;
+  }
+
   .rig :global(.device--mac) {
     inset: 0;
     width: 100%;
@@ -333,26 +340,34 @@ const sizesFor = (stacked: string, side: string) => `${STACKED_QUERY} ${stacked}
     margin-left: var(--text-left);
   }
 
-  /* ---- Tablet portrait and phones: text on top, devices centred below ----
-     Same query as STACKED_QUERY (showcase/layout.ts). */
+  /* ---- Tablet portrait and phones: copy on top, the devices stacked below ----
+     Same query as STACKED_QUERY (showcase/layout.ts). The stage becomes a
+     column: the copy, then the rig, which takes the height that is left. The
+     group of devices is sized to that space (container units), so the layout
+     holds for any screen shape and any wrapping of the copy, and it is
+     centred in it. */
   @media (max-width: 820px) and (max-aspect-ratio: 1/1) {
     .showcase {
-      /* Rig width = 723 * k ≈ the viewport width; on a short screen k shrinks
-         until the devices (they hang 159 * k below the MacBook) clear the
-         bottom edge by 16px. */
-      --k: min(calc(100vw * 0.00138), calc(100svh * 0.00092), max(0.2px, calc((100svh - 316px) / 638)));
-      /* Taller bands than the devices, so the text sits in the blue. */
+      --k: calc(100vw * 0.00138);
       --kb: calc(100svh / 940);
-      /* Centre the group (MacBook + the devices hanging below it) under the
-         text; never closer to the text than 300px. */
-      --ay: max(calc(100svh - 337 * var(--k)), calc(300px + 479 * var(--k)));
+      /* Horizon of the backdrop (the MacBook base stands on it), as a share of
+         the stage, which the backdrop covers whatever its height. */
+      --ay: 76%;
+      --tail: calc(100% - var(--ay));
+    }
+
+    .stage {
+      display: flex;
+      flex-direction: column;
     }
 
     .text {
+      position: relative;
+      top: auto;
+      left: auto;
+      flex: none;
       width: auto;
-      right: var(--gutter);
-      left: var(--gutter);
-      top: 92px;
+      margin: calc(clamp(68px, 11svh, 92px) + env(safe-area-inset-top, 0px)) var(--gutter) 0;
     }
 
     .title {
@@ -377,55 +392,77 @@ const sizesFor = (stacked: string, side: string) => `${STACKED_QUERY} ${stacked}
     }
 
     .rig {
+      position: relative;
+      top: auto;
       right: auto;
-      left: calc(50% - 361.5 * var(--k));
+      flex: 1 1 0;
+      min-height: 0;
+      width: auto;
+      aspect-ratio: auto;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 28px 0 max(24px, env(safe-area-inset-bottom, 0px));
+      container-type: size;
+    }
+
+    /* Sizes are in units of the group's width (the MacBook frame, a little
+       wider than the screen so its base bleeds off both edges); the group is
+       as tall as the three devices together (--gr), measured from the top of
+       the MacBook lid to the bottom of the iPhone. */
+    .rig__group {
+      --rw: min(108vw, calc(100cqh / var(--gr)));
+      --gr: 1.1;
+      /* The group starts centred on the MacBook alone and settles upwards as
+         the iPad and iPhone join (showcase.ts): percent of its height. */
+      --settle-mac: 22.5;
+      --settle-ipad: 4.5;
+      --k: calc(var(--rw) / 723);
+
+      display: block;
+      position: relative;
+      flex: none;
+      width: var(--rw);
+      height: calc(var(--rw) * var(--gr));
+    }
+
+    .rig :global(.device--mac) {
+      inset: auto;
+      left: 0;
+      top: calc(var(--rw) * -0.0573);
     }
 
     .rig :global(.device--ipad) {
-      left: 0;
-      top: 50%;
-      width: 72%;
+      left: 6.06%;
+      top: calc(var(--rw) * 0.4585);
+      width: 76%;
     }
 
     /* Its right edge reaches the MacBook base's, so no stub of the base
        sticks out beside it. */
     .rig :global(.device--iphone) {
-      left: 68.5%;
-      top: 36%;
-      width: 32%;
+      left: 57.9%;
+      top: calc(var(--rw) * 0.3668);
+      width: 37%;
     }
 
-    /* Not pinned: copy, then the devices in the flow below it. The backdrop
-       is anchored to the bottom of the stage, under the MacBook base, since
-       the base's height is no longer known. */
-    .showcase:not([data-mode='pinned']) {
-      /* Space under the MacBook for the devices that hang below it. */
-      --pad: calc(160 * var(--k) + 32px);
-      --ay: calc(553 * var(--kb));
-      --tail: var(--pad);
-    }
-
+    /* Not pinned: copy, then the devices in the flow below it. */
     .showcase:not([data-mode='pinned']) .stage {
-      padding: 92px 0 var(--pad);
-      /* What the first band colour continues as, above the backdrop. */
-      background: #010e1a;
-    }
-
-    .showcase:not([data-mode='pinned']) .stage__bg {
-      top: auto;
-      height: calc(var(--ay) + var(--tail));
+      padding-top: 0;
     }
 
     .showcase:not([data-mode='pinned']) .text {
-      right: auto;
-      margin: 0 var(--gutter);
+      margin-left: var(--gutter);
     }
 
     .showcase:not([data-mode='pinned']) .rig {
-      position: relative;
-      top: auto;
-      left: auto;
-      margin: 28px auto 0;
+      flex: none;
+      padding: 28px 0 max(40px, env(safe-area-inset-bottom, 0px));
+      container-type: normal;
+    }
+
+    .showcase:not([data-mode='pinned']) .rig__group {
+      --rw: min(108vw, 70svh);
     }
   }
 </style>
