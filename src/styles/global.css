@@ -25,7 +25,7 @@
   font-display: swap;
 }
 
-/* Free stand-in for Recoleta: Fraunces (OFL) instanced at opsz 30, wght 300, SOFT 100. */
+/* Free stand-in for Recoleta: Fraunces (OFL) instanced at opsz 24, wght 360, SOFT 50, condensed to 96.5%. */
 @font-face {
   font-family: 'Haptic Serif';
   src: url('/fonts/haptic-serif.woff2') format('woff2');
