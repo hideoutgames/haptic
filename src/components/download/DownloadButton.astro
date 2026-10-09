@@ -1,0 +1,201 @@
+---
+/**
+ * Large download button. The white face carries the site's chromatic-aberration
+ * signature as two soft colour layers behind it, widened horizontally like the
+ * HAPTIC title's fringes. Built in HTML/CSS/SVG, so these are our own buttons,
+ * not Apple or Google badge artwork.
+ */
+import PlatformIcon from './PlatformIcon.astro';
+import type { Platform } from '../../data/downloads';
+
+interface Props {
+  platform: Platform;
+  /** Server-rendered hidden; the platform picker reveals it. */
+  hidden?: boolean;
+}
+
+const { platform, hidden = false } = Astro.props;
+---
+
+<a
+  class="dl"
+  href={platform.href}
+  data-primary
+  data-platform-id={platform.id}
+  data-group={platform.group}
+  hidden={hidden}
+>
+  <span class="dl__face" aria-hidden="true"></span>
+  <span class="dl__icon"><PlatformIcon name={platform.icon} /></span>
+  <span class="dl__text">
+    <span class="dl__lead">{platform.lead}</span>{' '}
+    <span class="dl__name">{platform.name}</span>
+  </span>
+</a>
+
+<style>
+  .dl {
+    --dl-radius: calc(22 * var(--u));
+    position: relative;
+    isolation: isolate;
+    display: inline-flex;
+    align-items: center;
+    gap: calc(16 * var(--u));
+    height: calc(84 * var(--u));
+    padding: 0 calc(40 * var(--u)) 0 calc(32 * var(--u));
+    border-radius: var(--dl-radius);
+    color: var(--c-bg);
+    transition: transform 0.35s var(--ease-out);
+  }
+
+  .dl[hidden] {
+    display: none;
+  }
+
+  /* Colour fringes, widest (red) at the back. Horizontal only, like the title. */
+  .dl::before,
+  .dl::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    z-index: -2;
+    border-radius: var(--dl-radius);
+    filter: blur(1.5px);
+    transition: transform 0.45s var(--ease-out);
+  }
+
+  .dl::before {
+    background: var(--c-red);
+    transform: scaleX(1.05);
+  }
+
+  .dl::after {
+    z-index: -1;
+    background: var(--c-amber);
+    transform: scaleX(1.025);
+  }
+
+  .dl__face {
+    position: absolute;
+    inset: 0;
+    border-radius: var(--dl-radius);
+    background: #fff;
+    z-index: 0;
+  }
+
+  .dl__icon,
+  .dl__text {
+    position: relative;
+    z-index: 1;
+  }
+
+  .dl__icon {
+    display: grid;
+    font-size: calc(36 * var(--u));
+  }
+
+  .dl__text {
+    display: grid;
+    gap: calc(2 * var(--u));
+    text-align: left;
+  }
+
+  .dl__lead {
+    font-size: calc(14 * var(--u));
+    line-height: 1.2;
+    color: rgb(11 10 8 / 0.62);
+  }
+
+  .dl__name {
+    font-size: calc(27 * var(--u));
+    font-weight: 650;
+    line-height: 1.1;
+    letter-spacing: -0.01em;
+    white-space: nowrap;
+  }
+
+  .dl:hover {
+    transform: translateY(calc(-3 * var(--u)));
+  }
+
+  .dl:hover::before {
+    transform: scaleX(1.075);
+  }
+
+  .dl:hover::after {
+    transform: scaleX(1.04);
+  }
+
+  .dl:active {
+    transform: translateY(0) scale(0.985);
+  }
+
+  /* The global focus ring squares off the radius; keep the button's own. */
+  .dl:focus-visible {
+    border-radius: var(--dl-radius);
+    outline-offset: calc(8 * var(--u));
+  }
+
+  @media (max-width: 820px) {
+    .dl {
+      --dl-radius: 20px;
+      gap: 14px;
+      height: 76px;
+      padding: 0 32px 0 26px;
+    }
+
+    .dl__icon {
+      font-size: 32px;
+    }
+
+    .dl__lead {
+      font-size: 13px;
+    }
+
+    .dl__name {
+      font-size: 24px;
+    }
+
+    .dl:hover::before {
+      transform: scaleX(1.05);
+    }
+
+    .dl:hover::after {
+      transform: scaleX(1.025);
+    }
+  }
+
+  /* No platform detected on a phone: three compact buttons share one row, same height as a single one. */
+  @media (max-width: 560px) {
+    :global([data-platform='any']) .dl {
+      flex: 1 1 0;
+      min-width: 0;
+      flex-direction: column;
+      justify-content: center;
+      gap: 6px;
+      padding: 0 8px;
+    }
+
+    :global([data-platform='any']) .dl__lead {
+      display: none;
+    }
+
+    :global([data-platform='any']) .dl__text {
+      justify-items: center;
+    }
+
+    :global([data-platform='any']) .dl__name {
+      font-size: 17px;
+    }
+
+    :global([data-platform='any']) .dl__icon {
+      font-size: 26px;
+    }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .dl:hover {
+      transform: none;
+    }
+  }
+</style>

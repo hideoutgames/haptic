@@ -1,0 +1,117 @@
+---
+/**
+ * One device: soft shadow, editor screenshot clipped to the screen hole, and
+ * the frame PNG (transparent screen) on top. Everything is placed in
+ * percentages of the frame, so the figure scales with whatever box the
+ * parent gives it; the parent sets left/top/width.
+ */
+import { Picture } from 'astro:assets';
+import { bodyStyles, screenStyle, type DeviceKind } from './geometry';
+
+interface Props {
+  kind: DeviceKind;
+  frame: ImageMetadata;
+  shot: ImageMetadata;
+  alt: string;
+  /** Image widths (px) to generate, from the on-screen size at 1x up to 2x. */
+  frameWidths: number[];
+  shotWidths: number[];
+  /** `sizes` attribute: how wide the figure is rendered. */
+  sizes: string;
+}
+
+const { kind, frame, shot, alt, frameWidths, shotWidths, sizes } = Astro.props;
+const bodies = bodyStyles(kind);
+---
+
+<figure class={`device device--${kind}`} data-device={kind}>
+  {bodies.map((style) => <span class="device__shadow" style={style} aria-hidden="true" />)}
+  <div class="device__screen" style={screenStyle(kind)}>
+    <Picture
+      class="device__shot"
+      src={shot}
+      alt={alt}
+      widths={shotWidths}
+      sizes={sizes}
+      formats={['avif', 'webp']}
+      quality={80}
+      loading="lazy"
+      decoding="async"
+    />
+  </div>
+  <Picture
+    class="device__frame"
+    src={frame}
+    alt=""
+    widths={frameWidths}
+    sizes={sizes}
+    formats={['avif', 'webp']}
+    quality={85}
+    loading="lazy"
+    decoding="async"
+  />
+</figure>
+
+<style>
+  .device {
+    position: absolute;
+    margin: 0;
+    aspect-ratio: var(--frame-w) / var(--frame-h);
+    pointer-events: none;
+  }
+
+  .device--mac {
+    --frame-w: 4256;
+    --frame-h: 2834;
+  }
+
+  .device--ipad {
+    --frame-w: 2620;
+    --frame-h: 1868;
+  }
+
+  .device--iphone {
+    --frame-w: 1490;
+    --frame-h: 2996;
+  }
+
+  .device :global(picture) {
+    display: contents;
+  }
+
+  .device__shadow {
+    position: absolute;
+    box-shadow:
+      0 calc(2 * var(--k)) calc(6 * var(--k)) rgb(0 0 0 / 0.35),
+      0 calc(34 * var(--k)) calc(70 * var(--k)) rgb(0 0 0 / 0.5);
+  }
+
+  .device__screen {
+    position: absolute;
+    overflow: hidden;
+    background: #0d0d0d;
+  }
+
+  .device__shot {
+    width: 100%;
+    height: 100%;
+    max-width: none;
+    object-fit: cover;
+    object-position: top;
+  }
+
+  /* The Mac screen is wider than the screenshot, so it shows the top (status
+     bar included); iPad and iPhone screens match it closely enough to centre. */
+  .device--ipad .device__shot,
+  .device--iphone .device__shot {
+    object-position: center;
+  }
+
+  .device__frame {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    max-width: none;
+  }
+</style>

@@ -75,7 +75,8 @@ const isCurrent = (p: Page) => [p.href, ...(p.also ?? [])].includes(currentPath)
 
   .menu {
     --w: calc(497 * var(--m));
-    --pad-x: calc(23 * var(--m));
+    --pad-l: calc(23 * var(--m));
+    --pad-r: calc(24 * var(--m));
     --row: calc(33 * var(--m));
     position: absolute;
     top: calc(var(--safe-top) + 77 * var(--m));
@@ -141,7 +142,7 @@ const isCurrent = (p: Page) => [p.href, ...(p.also ?? [])].includes(currentPath)
     grid-template-columns: calc(224 * var(--m)) 1fr;
     grid-template-rows: auto auto auto;
     row-gap: calc(27 * var(--m));
-    padding: calc(23.4 * var(--m)) calc(24 * var(--m)) calc(14.6 * var(--m)) var(--pad-x);
+    padding: calc(23.4 * var(--m)) var(--pad-r) calc(14.6 * var(--m)) var(--pad-l);
     opacity: 0;
     transition: opacity 0.22s ease;
   }
@@ -220,7 +221,8 @@ const isCurrent = (p: Page) => [p.href, ...(p.also ?? [])].includes(currentPath)
   @media (max-width: 820px) {
     .menu {
       --w: min(497px, calc(100% - 32px));
-      --pad-x: 24px;
+      --pad-l: 22px;
+      --pad-r: 22px;
     }
 
     .menu__body {
@@ -247,7 +249,7 @@ const isCurrent = (p: Page) => [p.href, ...(p.also ?? [])].includes(currentPath)
   @media (max-width: 379px) {
     .menu__body {
       grid-template-columns: 1fr;
-      row-gap: 12px;
+      row-gap: 16px;
     }
 
     .menu__title-left,

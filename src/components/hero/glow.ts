@@ -21,16 +21,16 @@ interface Blob {
 }
 
 const BLOBS: Blob[] = [
-  { dx: 366, cy: 526, rx: 222, ry: 267, a: 0.95, color: '#933dda' }, // violet flanks
-  { dx: 0, cy: 572, rx: 657, ry: 192, a: 1, color: '#ff008c' }, // magenta floor
-  { dx: 0, cy: 519, rx: 544, ry: 400, a: 0.97, color: '#9e2a6a' }, // plum body
-  { dx: 252, cy: 394, rx: 235, ry: 207, a: 0.84, color: '#ff4d38' }, // coral shoulders
-  { dx: 0, cy: 402, rx: 471, ry: 172, a: 1, color: '#d23a37' }, // red core
-  { dx: 0, cy: 279, rx: 547, ry: 224, a: 0.71, color: '#ff8e0c' }, // orange band
-  { dx: 303, cy: 289, rx: 194, ry: 171, a: 0.59, color: '#ff860f' }, // orange shoulders
-  { dx: 0, cy: 210, rx: 406, ry: 44, a: 1, color: '#c2842c' }, // sandy rim
-  { dx: 0, cy: 176, rx: 369, ry: 83, a: 1, color: '#9b844f' }, // sandy cap
-  { dx: 0, cy: 130, rx: 351, ry: 101, a: 0.76, color: '#12486f' }, // teal crown
+  { dx: 365, cy: 534, rx: 222, ry: 282, a: 0.97, color: '#933dda' }, // violet flanks
+  { dx: 0, cy: 566, rx: 653, ry: 188, a: 1, color: '#ff0082' }, // magenta floor
+  { dx: 0, cy: 475, rx: 531, ry: 337, a: 0.98, color: '#962e71' }, // plum body
+  { dx: 254, cy: 396, rx: 233, ry: 206, a: 0.8, color: '#ff4d38' }, // coral shoulders
+  { dx: 0, cy: 369, rx: 459, ry: 235, a: 1, color: '#d73433' }, // red core
+  { dx: 0, cy: 285, rx: 540, ry: 239, a: 0.79, color: '#ff7a05' }, // orange band
+  { dx: 297, cy: 289, rx: 201, ry: 163, a: 0.57, color: '#ff890c' }, // orange shoulders
+  { dx: 0, cy: 225, rx: 469, ry: 71, a: 0.65, color: '#cc9329' }, // sandy rim
+  { dx: 0, cy: 179, rx: 400, ry: 89, a: 0.68, color: '#a19558' }, // sandy cap
+  { dx: 0, cy: 132, rx: 354, ry: 114, a: 0.48, color: '#005fa6' }, // blue crown
 ];
 
 /** Gaussian-like falloff that reaches exactly 0 at the blob radius. */

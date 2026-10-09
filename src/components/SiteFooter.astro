@@ -1,5 +1,152 @@
 ---
-// SiteFooter — placeholder stub; implemented by the section owner.
+/**
+ * Page footer: one line of copy, the nav, and the oversized HAPTIC word cropped
+ * by the bottom edge of the page (decorative, so aria-hidden).
+ *
+ * The text row uses the shared --u scale; the giant word is sized in vw, so its
+ * crop stays identical at any width and it always runs off the right edge.
+ */
+import Grain from './Grain.astro';
+
+const LINKS = [
+  { label: 'Home', href: '/' },
+  { label: 'Pricing', href: '/pricing' },
+  // Placeholder from the mockup: points at the download page until a signup flow exists.
+  { label: 'Signup', href: '/download' },
+  { label: 'About', href: '/about' },
+];
 ---
 
-<section data-stub="SiteFooter" style="min-height: 40vh; display: grid; place-items: center; color: #888;">SiteFooter</section>
+<footer class="footer">
+  <div class="row">
+    <p class="line">One-line Footer. Placeholder right now.</p>
+    <nav class="nav" aria-label="Footer">
+      <ul>
+        {
+          LINKS.map((link) => (
+            <li>
+              {link.label !== LINKS[0].label && (
+                <span class="sep" aria-hidden="true">
+                  &lt;&gt;
+                </span>
+              )}
+              <a href={link.href}>{link.label}</a>
+            </li>
+          ))
+        }
+      </ul>
+    </nav>
+  </div>
+
+  <div class="giant" aria-hidden="true">
+    <span class="giant__word">HAPTIC</span>
+  </div>
+
+  <Grain />
+</footer>
+
+<style>
+  .footer {
+    position: relative;
+    isolation: isolate;
+    overflow: hidden;
+    background: #0a0908;
+  }
+
+  .row {
+    position: relative;
+    z-index: var(--z-content);
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: calc(32 * var(--u)) calc(48 * var(--u));
+    /* Above 1600px the text keeps the centred 1280-unit composition; the giant word stays full-bleed. */
+    width: min(100%, calc(1280 * var(--u)));
+    margin-inline: auto;
+    padding: calc(28.4 * var(--u)) calc(116 * var(--u)) 0 calc(115 * var(--u));
+    font-size: calc(24 * var(--u));
+    line-height: 1.2;
+  }
+
+  .line {
+    margin: 0;
+  }
+
+  .nav ul {
+    display: flex;
+    flex-wrap: wrap;
+    margin: 0;
+    padding: 0;
+    list-style: none;
+  }
+
+  .nav li {
+    display: flex;
+  }
+
+  .nav a {
+    text-underline-offset: 0.18em;
+    text-decoration-thickness: 0.06em;
+  }
+
+  .nav a:hover {
+    text-decoration-line: underline;
+  }
+
+  /* Spacing measured from the mockup; the first gap is a little wider. */
+  .sep {
+    margin: 0 calc(13 * var(--u));
+  }
+
+  .nav li:nth-child(2) .sep {
+    margin-left: calc(20 * var(--u));
+  }
+
+  /* Giant word: 428px at 1280 (33.4vw). Only its top half shows (150.5px, 11.76vw). */
+  .giant {
+    position: relative;
+    z-index: var(--z-content);
+    height: calc(100vw * 150.5 / 1280);
+    margin-top: calc(76.8 * var(--u));
+    overflow: hidden;
+    color: var(--c-giant);
+    user-select: none;
+  }
+
+  .giant__word {
+    position: absolute;
+    top: -0.0857em;
+    left: -1.156vw;
+    font-family: var(--font-display);
+    font-size: 33.4vw;
+    line-height: 1;
+    white-space: nowrap;
+  }
+
+  @media (max-width: 820px) {
+    .row {
+      width: 100%;
+      flex-direction: column;
+      align-items: flex-start;
+      gap: 14px;
+      padding: 28px var(--gutter) 0;
+      font-size: clamp(13px, 4.4vw, 22px);
+    }
+
+    .nav ul {
+      flex-wrap: nowrap;
+    }
+
+    .sep {
+      margin: 0 0.6em;
+    }
+
+    .nav li:nth-child(2) .sep {
+      margin-left: 0.6em;
+    }
+
+    .giant {
+      margin-top: 44px;
+    }
+  }
+</style>

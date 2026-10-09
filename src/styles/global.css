@@ -49,7 +49,7 @@
   --font-sans: 'Onest Variable', 'Onest', ui-sans-serif, system-ui, -apple-system, 'Segoe UI', sans-serif;
 
   /* Grain (texture is generated at runtime in Base.astro) */
-  --grain-opacity: 0.11;
+  --grain-opacity: 0.25;
 
   /* Stacking inside a section: background < content < grain < screenshots */
   --z-bg: 0;
@@ -75,6 +75,7 @@
 
 html {
   background: var(--c-bg);
+  overflow-x: clip;
   -webkit-text-size-adjust: 100%;
   text-size-adjust: 100%;
 }
@@ -132,18 +133,29 @@ button {
   border: 0;
 }
 
-/* Procedural film grain. Drop <Grain /> (or a div.grain-layer) inside any
-   positioned section; it sits above backgrounds/text and below screenshots. */
+/* Procedural film grain (two tiles generated in Base.astro). Use <Grain />
+   inside any positioned section: it sits above backgrounds/text and below
+   screenshots. The layers must not be wrapped in an element that creates a
+   stacking context of its own, or the blend modes lose their backdrop. */
 .grain-layer {
   position: absolute;
   inset: 0;
   z-index: var(--z-grain);
   pointer-events: none;
-  background-image: var(--grain-url, none);
   background-size: var(--grain-size, 256px) var(--grain-size, 256px);
   background-repeat: repeat;
   opacity: var(--grain-opacity);
   image-rendering: pixelated;
+}
+
+.grain-layer--light {
+  background-image: var(--grain-light, none);
+  mix-blend-mode: plus-lighter;
+}
+
+.grain-layer--dark {
+  background-image: var(--grain-dark, none);
+  mix-blend-mode: multiply;
 }
 
 @media (prefers-reduced-motion: reduce) {

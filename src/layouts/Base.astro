@@ -29,28 +29,37 @@ const {
     <link rel="preload" href="/fonts/licensed/block-berthold.woff2" as="font" type="font/woff2" crossorigin />
     <link rel="preload" href="/fonts/haptic-serif.woff2" as="font" type="font/woff2" crossorigin />
     <script is:inline>
-      // Procedural film grain: one random noise tile per load, exposed to CSS
-      // as --grain-url. Generated at device-pixel resolution so each grain is
-      // a single physical pixel, like the mockup's noise filter.
+      // Procedural film grain, generated once per load (no image asset).
+      // Each pixel gets one gaussian sample: positive values go into a white
+      // "light" tile (added with plus-lighter), negative values into a black
+      // "dark" tile (multiplied, at twice the strength). Together they behave
+      // like zero-mean additive noise, so mid-tones keep their colour and
+      // blacks are only lifted by clipping, as in the mockup's noise filter.
       (function () {
         try {
           var dpr = Math.min(window.devicePixelRatio || 1, 3);
           var n = 256;
-          var c = document.createElement('canvas');
-          c.width = c.height = n;
-          var ctx = c.getContext('2d');
-          var img = ctx.createImageData(n, n);
-          var d = img.data;
-          for (var i = 0; i < d.length; i += 4) {
-            // Approximately gaussian, centred on mid-grey.
-            var g = (Math.random() + Math.random() + Math.random() - 1.5) * 300 + 128;
-            var v = g < 0 ? 0 : g > 255 ? 255 : g;
-            d[i] = d[i + 1] = d[i + 2] = v;
-            d[i + 3] = 255;
+          function tile() {
+            var c = document.createElement('canvas');
+            c.width = c.height = n;
+            return c;
           }
-          ctx.putImageData(img, 0, 0);
+          var lc = tile(), dc = tile();
+          var lctx = lc.getContext('2d'), dctx = dc.getContext('2d');
+          var li = lctx.createImageData(n, n), di = dctx.createImageData(n, n);
+          var l = li.data, d = di.data;
+          for (var i = 0; i < l.length; i += 4) {
+            // Box-Muller gaussian
+            var g = Math.sqrt(-2 * Math.log(1 - Math.random())) * Math.cos(6.283185307 * Math.random());
+            l[i] = l[i + 1] = l[i + 2] = 255;
+            if (g > 0) l[i + 3] = Math.min(255, g * 88);
+            else d[i + 3] = Math.min(255, -g * 112);
+          }
+          lctx.putImageData(li, 0, 0);
+          dctx.putImageData(di, 0, 0);
           var s = document.documentElement.style;
-          s.setProperty('--grain-url', 'url(' + c.toDataURL('image/png') + ')');
+          s.setProperty('--grain-light', 'url(' + lc.toDataURL('image/png') + ')');
+          s.setProperty('--grain-dark', 'url(' + dc.toDataURL('image/png') + ')');
           s.setProperty('--grain-size', n / dpr + 'px');
         } catch (e) {}
       })();
