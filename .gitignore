@@ -7,6 +7,7 @@ dist/
 !.env.example
 /scratch/
 
-# Commercial fonts (Block Berthold, Recoleta) – licence must allow public redistribution before committing
+# Commercial fonts whose licence does not allow public redistribution (Recoleta DEMO)
 public/fonts/licensed/*
 !public/fonts/licensed/README.md
+!public/fonts/licensed/block-berthold.woff2

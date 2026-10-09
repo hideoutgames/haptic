@@ -1,13 +1,13 @@
-# Licensed fonts (not committed)
+# Licensed fonts
 
-Place the web font files here before building:
+- `block-berthold.woff2`: Block Berthold (H. Berthold AG / Adobe). Licence confirmed by Hideout; committed.
+- `recoleta-regular.woff2`: Recoleta Regular **DEMO** cut (Latinotype). **Not committed**: the demo is not licensed for publishing.
+  Without it the site falls back to `Haptic Serif` (`/fonts/haptic-serif.woff2`, a free OFL instance of Fraunces).
+  To use real Recoleta, buy a web licence and drop the woff2 here (and un-ignore it in `.gitignore`).
 
-- `block-berthold.woff2` – Block Berthold (H. Berthold AG / Adobe). Web-embedding licence required.
-- `recoleta-regular.woff2` – Recoleta Regular (Latinotype). The supplied file is the **DEMO** build; a commercial web licence is required for production.
-
-They are git-ignored because this repository is public. Convert from OTF with:
+Convert an OTF to WOFF2 with:
 
 ```sh
 pip install fonttools brotli
-python -c "from fontTools.ttLib import TTFont as T; f=T('blockberthold.otf'); f.flavor='woff2'; f.save('block-berthold.woff2')"
+python -c "from fontTools.ttLib import TTFont as T; f=T('font.otf'); f.flavor='woff2'; f.save('font.woff2')"
 ```
