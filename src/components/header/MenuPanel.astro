@@ -4,33 +4,37 @@
  * its own backdrop-filter) and the link content. Visibility is driven by the
  * `data-open` attribute on the header, set by header.ts.
  */
+import { withBase } from '../../lib/paths';
 import NorwayFlag from './NorwayFlag.astro';
 
 interface Page {
   label: string;
+  /** Site-relative path, without the deploy base. */
   href: string;
-  /** Extra paths that count as "this page" for aria-current. */
-  also?: string[];
 }
 
 interface Props {
   id: string;
   pages: Page[];
+  /** Current page path, also without the deploy base. */
   currentPath: string;
 }
 
 const { id, pages, currentPath } = Astro.props;
-const isCurrent = (p: Page) => [p.href, ...(p.also ?? [])].includes(currentPath);
+const isCurrent = (p: Page) => p.href === currentPath;
 ---
 
 <svg class="defs" width="0" height="0" aria-hidden="true" focusable="false">
   <!--
-    Notch outline in bounding-box units (92 × 18.6 px design box): a smooth
-    hill rising from the panel's top edge, plus a 0.5px strip that tucks under
-    the panel so the two translucent pieces never show a seam.
+    Notch outline taken from the designer's popover SVG, in bounding-box units
+    of an 85 × 18.24 px box: concave fillets into the panel's top edge, straight
+    flanks and a rounded tip rising 17.74px. The last 0.5px tucks under the
+    panel so the two translucent pieces never show a seam.
   -->
   <clipPath id="menu-notch" clipPathUnits="objectBoundingBox">
-    <path d="M0 .973C.239 .973 .37 0 .5 0S.761 .973 1 .973V1H0Z"></path>
+    <path
+      d="M0 .9726C.0694 .9726 .1376 .8824 .1966 .7137C.258 .5396 .3387 .3083 .4017 .1289C.462 -.043 .538 -.043 .5983 .1289C.6613 .3083 .742 .5396 .8034 .7137C.8624 .8824 .9306 .9726 1 .9726V1H0Z"
+    ></path>
   </clipPath>
 </svg>
 
@@ -38,7 +42,9 @@ const isCurrent = (p: Page) => [p.href, ...(p.also ?? [])].includes(currentPath)
   <div class="menu__notch" aria-hidden="true"></div>
   <div class="menu__surface" aria-hidden="true"></div>
 
-  <div class="menu__body">
+  <!-- data-lenis-prevent: the panel scrolls on short screens; Lenis would otherwise
+       turn the wheel into page scroll. -->
+  <div class="menu__body" data-lenis-prevent>
     <p class="menu__label menu__title-left">Haptic Engine</p>
 
     <nav class="menu__pages" aria-labelledby={`${id}-pages`}>
@@ -47,7 +53,7 @@ const isCurrent = (p: Page) => [p.href, ...(p.also ?? [])].includes(currentPath)
         {
           pages.map((page) => (
             <li>
-              <a class="menu__link" href={page.href} aria-current={isCurrent(page) ? 'page' : undefined}>
+              <a class="menu__link" href={withBase(page.href)} aria-current={isCurrent(page) ? 'page' : undefined}>
                 {page.label}
               </a>
             </li>
@@ -59,10 +65,10 @@ const isCurrent = (p: Page) => [p.href, ...(p.also ?? [])].includes(currentPath)
     <p class="menu__label menu__title-right">Learning Center</p>
     <p class="menu__label menu__soon">Coming soon....</p>
 
-    <footer class="menu__foot">
-      <span>Hideout</span>
+    <div class="menu__foot">
+      <a class="menu__link" href="https://hideout.no">Hideout</a>
       <span class="menu__country"><NorwayFlag />Norway</span>
-    </footer>
+    </div>
   </div>
 </div>
 
@@ -74,7 +80,7 @@ const isCurrent = (p: Page) => [p.href, ...(p.also ?? [])].includes(currentPath)
   }
 
   .menu {
-    --w: calc(497 * var(--m));
+    --w: calc(497.5 * var(--m));
     --pad-l: calc(23 * var(--m));
     --pad-r: calc(24 * var(--m));
     --row: calc(33 * var(--m));
@@ -108,7 +114,7 @@ const isCurrent = (p: Page) => [p.href, ...(p.also ?? [])].includes(currentPath)
   .menu__surface,
   .menu__notch {
     position: absolute;
-    background: rgb(29 29 29 / 0.85);
+    background: rgb(24 24 24 / 0.86);
     -webkit-backdrop-filter: blur(calc(24 * var(--m))) saturate(1.2);
     backdrop-filter: blur(calc(24 * var(--m))) saturate(1.2);
     opacity: 0;
@@ -123,9 +129,9 @@ const isCurrent = (p: Page) => [p.href, ...(p.also ?? [])].includes(currentPath)
 
   .menu__notch {
     left: 50%;
-    width: calc(92 * var(--m));
-    margin-left: calc(-46 * var(--m));
-    height: calc(18.6 * var(--m));
+    width: calc(85 * var(--m));
+    margin-left: calc(-42.5 * var(--m));
+    height: calc(18.24 * var(--m));
     bottom: calc(100% - 0.5 * var(--m));
     clip-path: url(#menu-notch);
   }
@@ -142,7 +148,13 @@ const isCurrent = (p: Page) => [p.href, ...(p.also ?? [])].includes(currentPath)
     grid-template-columns: calc(224 * var(--m)) 1fr;
     grid-template-rows: auto auto auto;
     row-gap: calc(27 * var(--m));
-    padding: calc(23.4 * var(--m)) var(--pad-r) calc(14.6 * var(--m)) var(--pad-l);
+    padding: calc(23.4 * var(--m)) var(--pad-r) calc(13.1 * var(--m)) var(--pad-l);
+    /* Short windows: scroll inside the panel (the notch sits outside it). */
+    max-height: calc(100dvh - var(--safe-top) - 77 * var(--m) - 16px);
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    scrollbar-width: thin;
+    scrollbar-color: rgb(255 255 255 / 0.3) transparent;
     opacity: 0;
     transition: opacity 0.22s ease;
   }
@@ -206,7 +218,7 @@ const isCurrent = (p: Page) => [p.href, ...(p.also ?? [])].includes(currentPath)
   .menu__foot {
     grid-column: 1 / -1;
     grid-row: 3;
-    margin-top: calc(99 * var(--m) - 27 * var(--m));
+    margin-top: calc(66 * var(--m) - 27 * var(--m));
     display: flex;
     justify-content: space-between;
     align-items: center;
@@ -228,10 +240,6 @@ const isCurrent = (p: Page) => [p.href, ...(p.also ?? [])].includes(currentPath)
     .menu__body {
       grid-template-columns: max-content 1fr;
       row-gap: 20px;
-      /* Short screens: scroll inside the panel (the notch sits outside it). */
-      max-height: calc(100dvh - var(--safe-top) - 77px - 16px);
-      overflow-y: auto;
-      overscroll-behavior: contain;
     }
 
     .menu__foot {
