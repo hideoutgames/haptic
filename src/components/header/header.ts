@@ -24,6 +24,8 @@ function initHeader(header: HTMLElement, button: HTMLButtonElement, menu: HTMLEl
 
   let open = false;
 
+  let openedWithPointer = false;
+
   // ---- H <-> bar morph ----------------------------------------------------
   const morph = { t: 0 };
   const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)');
@@ -69,11 +71,18 @@ function initHeader(header: HTMLElement, button: HTMLButtonElement, menu: HTMLEl
     if (open) {
       menu.querySelector<HTMLElement>('a[href]')?.focus({ preventScroll: true });
     } else if (restoreFocus) {
+      // Escape after a mouse/touch open: give focus back without a focus ring.
+      button.toggleAttribute('data-quiet-focus', openedWithPointer);
       button.focus({ preventScroll: true });
     }
   }
 
-  button.addEventListener('click', () => setOpen(!open));
+  button.addEventListener('click', (event) => {
+    // Keyboard-activated clicks have detail 0.
+    if (!open) openedWithPointer = event.detail > 0;
+    setOpen(!open);
+  });
+  button.addEventListener('blur', () => button.removeAttribute('data-quiet-focus'));
 
   document.addEventListener('keydown', (event) => {
     if (event.key === 'Escape' && open) {

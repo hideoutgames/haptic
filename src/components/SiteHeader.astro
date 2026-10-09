@@ -85,6 +85,32 @@ const menuId = 'site-menu';
     -webkit-tap-highlight-color: transparent;
   }
 
+  /* The mark tints slightly darker on hover/press to read as a button. */
+  .menu-button :global(.logo) {
+    transition: filter 0.18s ease;
+  }
+
+  @media (hover: hover) {
+    .menu-button:hover :global(.logo) {
+      filter: brightness(0.8);
+    }
+  }
+
+  .menu-button:active :global(.logo) {
+    filter: brightness(0.7);
+  }
+
+  /* Keyboard focus gets a soft white ring instead of the global amber outline.
+     Focus returned to the button after a pointer-opened menu stays quiet. */
+  .menu-button:focus-visible {
+    outline: none;
+    box-shadow: 0 0 0 1.5px rgb(255 255 255 / 0.55);
+  }
+
+  .menu-button[data-quiet-focus]:focus-visible {
+    box-shadow: none;
+  }
+
   @media (max-width: 820px) {
     .site-header {
       --m: 1px;
