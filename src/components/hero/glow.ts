@@ -1,14 +1,14 @@
 /**
  * The hero "aurora": a stack of soft elliptical radial gradients composited
  * over the night sky. Values were fitted to the mockup, so they are written
- * in mockup pixels (a 1280 × 700 canvas) and converted to percentages, which
+ * in mockup pixels (a 1280 × 960 canvas) and converted to percentages, which
  * lets the whole glow scale with whatever box it is painted into.
  *
  * Layers are listed bottom to top. `dx` > 0 draws a mirrored pair at
  * 640 ± dx, otherwise the blob sits on the centre line.
  */
 export const GLOW_WIDTH = 1280;
-export const GLOW_HEIGHT = 700;
+export const GLOW_HEIGHT = 960;
 
 interface Blob {
   dx: number;

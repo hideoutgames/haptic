@@ -1,0 +1,43 @@
+---
+/**
+ * The header mark: an "H" drawn as stacked SVG paths (red fringe, amber fringe,
+ * white ink) that morphs into the menu bar. Path data comes from
+ * logo-geometry.ts; header.ts re-renders it while the menu opens and closes.
+ */
+import { BLUR, LOGO_VIEWBOX as vb, logoPaths } from './logo-geometry';
+
+const paths = logoPaths(0);
+---
+
+<svg
+  class="logo"
+  viewBox={`${vb.x} ${vb.y} ${vb.w} ${vb.h}`}
+  aria-hidden="true"
+  focusable="false"
+>
+  <defs>
+    <filter id="logo-ink" filterUnits="userSpaceOnUse" x={vb.x} y={vb.y} width={vb.w} height={vb.h}>
+      <feGaussianBlur stdDeviation={BLUR.ink}></feGaussianBlur>
+    </filter>
+    <filter id="logo-fringe" filterUnits="userSpaceOnUse" x={vb.x} y={vb.y} width={vb.w} height={vb.h}>
+      <feGaussianBlur stdDeviation={BLUR.fringe}></feGaussianBlur>
+    </filter>
+  </defs>
+  <path data-logo="red" d={paths.red} fill="#ff4400" filter="url(#logo-fringe)"></path>
+  <path data-logo="amber" d={paths.amber} fill="#ffb300" filter="url(#logo-fringe)"></path>
+  <path data-logo="white" d={paths.white} fill="#fff" filter="url(#logo-ink)"></path>
+</svg>
+
+<style>
+  .logo {
+    position: absolute;
+    /* ink origin (x=0, y=0) sits at 12.5 / 9 units from the button's centre / top */
+    left: 50%;
+    top: calc(7 * var(--m));
+    width: calc(43 * var(--m));
+    height: calc(39 * var(--m));
+    margin-left: calc(-21.5 * var(--m));
+    overflow: visible;
+    pointer-events: none;
+  }
+</style>

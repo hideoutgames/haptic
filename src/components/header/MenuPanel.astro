@@ -1,0 +1,275 @@
+---
+/**
+ * The popover under the logo: surface + notch (two siblings so each can carry
+ * its own backdrop-filter) and the link content. Visibility is driven by the
+ * `data-open` attribute on the header, set by header.ts.
+ */
+import NorwayFlag from './NorwayFlag.astro';
+
+interface Page {
+  label: string;
+  href: string;
+  /** Extra paths that count as "this page" for aria-current. */
+  also?: string[];
+}
+
+interface Props {
+  id: string;
+  pages: Page[];
+  currentPath: string;
+}
+
+const { id, pages, currentPath } = Astro.props;
+const isCurrent = (p: Page) => [p.href, ...(p.also ?? [])].includes(currentPath);
+---
+
+<svg class="defs" width="0" height="0" aria-hidden="true" focusable="false">
+  <!--
+    Notch outline in bounding-box units (92 × 18.6 px design box): a smooth
+    hill rising from the panel's top edge, plus a 0.5px strip that tucks under
+    the panel so the two translucent pieces never show a seam.
+  -->
+  <clipPath id="menu-notch" clipPathUnits="objectBoundingBox">
+    <path d="M0 .973C.239 .973 .37 0 .5 0S.761 .973 1 .973V1H0Z"></path>
+  </clipPath>
+</svg>
+
+<div class="menu" id={id} role="group" aria-label="Site menu" tabindex="-1">
+  <div class="menu__notch" aria-hidden="true"></div>
+  <div class="menu__surface" aria-hidden="true"></div>
+
+  <div class="menu__body">
+    <p class="menu__label menu__title-left">Haptic Engine</p>
+
+    <nav class="menu__pages" aria-labelledby={`${id}-pages`}>
+      <p class="menu__label" id={`${id}-pages`}>Pages:</p>
+      <ul>
+        {
+          pages.map((page) => (
+            <li>
+              <a class="menu__link" href={page.href} aria-current={isCurrent(page) ? 'page' : undefined}>
+                {page.label}
+              </a>
+            </li>
+          ))
+        }
+      </ul>
+    </nav>
+
+    <p class="menu__label menu__title-right">Learning Center</p>
+    <p class="menu__label menu__soon">Coming soon....</p>
+
+    <footer class="menu__foot">
+      <span>Hideout</span>
+      <span class="menu__country"><NorwayFlag />Norway</span>
+    </footer>
+  </div>
+</div>
+
+<style>
+  /* Sizes are authored at the 1280px mockup and scale with --m (see SiteHeader). */
+  .defs {
+    position: absolute;
+    pointer-events: none;
+  }
+
+  .menu {
+    --w: calc(497 * var(--m));
+    --pad-x: calc(23 * var(--m));
+    --row: calc(33 * var(--m));
+    position: absolute;
+    top: calc(var(--safe-top) + 77 * var(--m));
+    left: 50%;
+    width: var(--w);
+    margin-left: calc(var(--w) / -2);
+    font-size: calc(18 * var(--m));
+    line-height: var(--row);
+    color: var(--c-text);
+    outline: none;
+    /* Grows out of the notch; no opacity/filter here, either would stop the
+       children's backdrop-filter from seeing the page behind. */
+    transform-origin: 50% 0;
+    transform: scale(0.94) translateY(calc(-6 * var(--m)));
+    visibility: hidden;
+    pointer-events: none;
+    transition:
+      transform 0.22s var(--ease-out),
+      visibility 0s linear 0.22s;
+  }
+
+  :global([data-open]) .menu {
+    transform: none;
+    visibility: visible;
+    pointer-events: auto;
+    transition-delay: 0s;
+  }
+
+  .menu__surface,
+  .menu__notch {
+    position: absolute;
+    background: rgb(29 29 29 / 0.85);
+    -webkit-backdrop-filter: blur(calc(24 * var(--m))) saturate(1.2);
+    backdrop-filter: blur(calc(24 * var(--m))) saturate(1.2);
+    opacity: 0;
+    transition: opacity 0.22s ease;
+  }
+
+  .menu__surface {
+    inset: 0;
+    border-radius: calc(16 * var(--m));
+    box-shadow: 0 calc(14 * var(--m)) calc(40 * var(--m)) rgb(0 0 0 / 0.28);
+  }
+
+  .menu__notch {
+    left: 50%;
+    width: calc(92 * var(--m));
+    margin-left: calc(-46 * var(--m));
+    height: calc(18.6 * var(--m));
+    bottom: calc(100% - 0.5 * var(--m));
+    clip-path: url(#menu-notch);
+  }
+
+  :global([data-open]) .menu__surface,
+  :global([data-open]) .menu__notch,
+  :global([data-open]) .menu__body {
+    opacity: 1;
+  }
+
+  .menu__body {
+    position: relative;
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    grid-template-rows: auto auto auto;
+    row-gap: calc(26.5 * var(--m));
+    padding: calc(23.5 * var(--m)) var(--pad-x) calc(14.3 * var(--m));
+    opacity: 0;
+    transition: opacity 0.22s ease;
+  }
+
+  .menu__body p,
+  .menu__body ul {
+    margin: 0;
+  }
+
+  .menu__body ul {
+    padding: 0;
+    list-style: none;
+  }
+
+  .menu__title-left {
+    grid-area: 1 / 1;
+  }
+  .menu__pages {
+    grid-area: 2 / 1;
+  }
+  .menu__title-right {
+    grid-area: 1 / 2;
+  }
+  .menu__soon {
+    grid-area: 2 / 2;
+  }
+
+  .menu__link {
+    position: relative;
+    display: block;
+    width: fit-content;
+    text-underline-offset: calc(5 * var(--m));
+    text-decoration-thickness: calc(2 * var(--m));
+    text-decoration-color: transparent;
+    transition: text-decoration-color 0.15s ease;
+  }
+
+  .menu__link:hover,
+  .menu__link:focus-visible {
+    text-decoration-line: underline;
+    text-decoration-color: var(--c-amber);
+  }
+
+  .menu__link:focus-visible {
+    outline-offset: calc(2 * var(--m));
+  }
+
+  /* Current page: a small amber dot hanging in the left padding. */
+  .menu__link[aria-current='page']::before {
+    content: '';
+    position: absolute;
+    left: calc(-14 * var(--m));
+    top: 50%;
+    width: calc(5 * var(--m));
+    height: calc(5 * var(--m));
+    margin-top: calc(-2.5 * var(--m));
+    border-radius: 50%;
+    background: var(--c-amber);
+  }
+
+  .menu__foot {
+    grid-column: 1 / -1;
+    grid-row: 3;
+    margin-top: calc(98.5 * var(--m) - 26.5 * var(--m));
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+
+  .menu__country {
+    display: inline-flex;
+    align-items: center;
+    gap: calc(8 * var(--m));
+  }
+
+  @media (max-width: 820px) {
+    .menu {
+      --w: min(497px, calc(100% - 32px));
+      --pad-x: 24px;
+    }
+
+    .menu__body {
+      grid-template-columns: max-content 1fr;
+      row-gap: 20px;
+      /* Short screens: scroll inside the panel (the notch sits outside it). */
+      max-height: calc(100dvh - var(--safe-top) - 77px - 16px);
+      overflow-y: auto;
+      overscroll-behavior: contain;
+    }
+
+    .menu__foot {
+      margin-top: 36px;
+    }
+
+    .menu__link {
+      display: flex;
+      align-items: center;
+      min-height: 40px;
+    }
+  }
+
+  /* Too narrow for two columns: stack them. */
+  @media (max-width: 379px) {
+    .menu__body {
+      grid-template-columns: 1fr;
+      row-gap: 12px;
+    }
+
+    .menu__title-left,
+    .menu__pages,
+    .menu__title-right,
+    .menu__soon,
+    .menu__foot {
+      grid-area: auto;
+      grid-column: 1;
+    }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .menu {
+      transform: none;
+    }
+
+    .menu,
+    .menu__surface,
+    .menu__notch,
+    .menu__body {
+      transition-duration: 0.12s !important;
+    }
+  }
+</style>

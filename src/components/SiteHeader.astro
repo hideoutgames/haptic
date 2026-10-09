@@ -1,5 +1,82 @@
 ---
-// SiteHeader — placeholder stub; implemented by the section owner.
+/**
+ * Site header: the H logo (fixed, top centre) is the menu button; the popover
+ * lists the pages. Hides on scroll down, returns on scroll up, and stays put
+ * while the menu is open. Behaviour lives in header/header.ts.
+ */
+import HeaderLogo from './header/HeaderLogo.astro';
+import MenuPanel from './header/MenuPanel.astro';
+
+const pages = [
+  { label: 'Home', href: '/' },
+  { label: 'Pricing & Download', href: '/pricing', also: ['/download'] },
+  { label: 'Support', href: '/support' },
+  { label: 'About', href: '/about' },
+];
+
+const currentPath = Astro.url.pathname.replace(/\/+$/, '') || '/';
+const menuId = 'site-menu';
 ---
 
-<section data-stub="SiteHeader" style="min-height: 40vh; display: grid; place-items: center; color: #888;">SiteHeader</section>
+<header class="site-header" data-site-header>
+  <button
+    class="menu-button"
+    type="button"
+    aria-expanded="false"
+    aria-controls={menuId}
+    aria-label="Open menu"
+    data-menu-button
+  >
+    <HeaderLogo />
+  </button>
+
+  <MenuPanel id={menuId} {pages} {currentPath} />
+</header>
+
+<script>
+  import '../components/header/header.ts';
+</script>
+
+<style>
+  .site-header {
+    /* Header scale: follows the page's --u but never shrinks below 0.9 so the
+       menu text stays readable on small laptops/tablets; fixed 1px on phones. */
+    --m: max(var(--u), 0.9px);
+    --safe-top: env(safe-area-inset-top, 0px);
+    position: fixed;
+    inset: 0 0 auto;
+    z-index: var(--z-header);
+    height: calc(var(--safe-top) + 56 * var(--m));
+    /* The bar spans the viewport but only the button and open menu take pointers. */
+    pointer-events: none;
+    transition: transform 0.4s var(--ease-out);
+  }
+
+  .site-header[data-hidden] {
+    transform: translateY(-100%);
+  }
+
+  .menu-button {
+    position: absolute;
+    top: calc(var(--safe-top) + 8 * var(--m));
+    left: 50%;
+    width: calc(56 * var(--m));
+    height: calc(48 * var(--m));
+    margin-left: calc(-28 * var(--m));
+    border-radius: calc(14 * var(--m));
+    pointer-events: auto;
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  @media (max-width: 820px) {
+    .site-header {
+      --m: 1px;
+    }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .site-header {
+      transition-duration: 0.001ms;
+    }
+  }
+</style>
