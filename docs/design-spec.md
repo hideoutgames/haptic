@@ -28,9 +28,10 @@ Measured on the clean title export:
   (lens-style CA, so fringes grow toward the ends: ~23 px at the H/C ends, ~13 px at A, ~0 at the centre).
   - amber `#ffb300` copy: `scaleX ≈ 1.045`
   - red `#ff4400` copy: `scaleX ≈ 1.08` (beneath the amber)
-  - all three layers are slightly soft: edge feather ≈ 1.5–3 px (`filter: blur(~1px)` on white, ~1.5px on copies)
+  - the **white glyphs are crisp live text** (the designer's SVG export is white Block Berthold text, 343.9px @2x = 172px, over a
+    soft raster fringe layer); only the colour copies are soft (edge feather ≈ 2–3 px, `filter: blur(~1.5px)`)
   - **No vertical fringes.**
-- **Logo "H"** (top centre): same treatment; fringes on both sides (amber inner ~2.5px, red outer ~2.5px).
+- **Logo "H"** (top centre): the title's H scaled to ≈ 0.2466 (≈ 42.4px Block Berthold) with the same fringe layer, so fringes appear on both sides (amber inner ~2.5px, red outer ~2.5px).
 - **"portable"**: Onest Black, white, with **vertical** red/amber fringes above and below (~4–5 px, mostly `#ff4400`, faint amber at the inner edge).
 - **Menu-open icon**: the H becomes a white rounded bar (30 × 10) with fringes **above and below** (rotated CA). See header section.
 
@@ -43,7 +44,9 @@ Measured on the clean title export:
 ### Menu popover (open state; reference `mockup-menu-closeup-2560.png`)
 
 - Panel: x 391.5 → 888.5 (w ≈ 497, centred), top ≈ 77, bottom ≈ 470 (h ≈ 393). Radius ≈ 16.
-- A small rounded **notch/arrow** on the top edge at the centre (≈ 38 wide, ≈ 16 tall) pointing at the icon.
+- A small rounded **notch/arrow** on the top edge at the centre pointing at the icon. Exact outline from the designer's SVG
+  (`menu-popover-shape.svg`, 995 × 828 @2x): body 497.5 × 393.5 CSS with 16px corner radius; the notch rises 17.7px above the
+  body's top edge, ≈ 85px wide at the base including the concave fillets, ≈ 17px wide rounded tip, centred.
 - Fill: dark, translucent with backdrop blur. Measured colour goes from `#1b1b1b` (over the dark sky) to `#38302b` / `#36221f`
   (over the glow), i.e. roughly `rgb(24 24 24 / 0.86)` + `backdrop-filter: blur(24px) saturate(1.2)`. No visible border; soft shadow.
 - Padding ≈ 24.5 left/right. Two columns: left at x = 416, right column at x ≈ 639.
@@ -142,3 +145,7 @@ OS-aware primary download (see brief in the build prompt). Follows the same typo
 - **Giant "HAPTIC"**: Block Berthold, colour `#676767`, **≈ 428px** (≈ 33.4vw at 1280), starts at x ≈ −14.8 (so the H's ink starts at x ≈ 1.5),
   cap top at y ≈ 2234 and baseline ≈ 150px **below** the page bottom, so only the top ~half of the letters shows and the word runs off the right edge (the C is cut).
 - The page ends at 2384.5 (mockup height).
+
+## Extra placeholder screenshots
+
+- `src/assets/editor/projects-phone.jpg` (1179 × 2556): iPhone Projects/home screen of the app, an alternative screen for the phone mockup.
