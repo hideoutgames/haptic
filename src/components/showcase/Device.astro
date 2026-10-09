@@ -4,6 +4,10 @@
  * the frame PNG (transparent screen) on top. Everything is placed in
  * percentages of the frame, so the figure scales with whatever box the
  * parent gives it; the parent sets left/top/width.
+ *
+ * An optional `intro` screen lies over the screenshot while the scroll
+ * sequence runs (showcase.ts fades it out). Without the sequence (static
+ * composition, no JS) it is not rendered, so the device shows `shot`.
  */
 import { Picture } from 'astro:assets';
 import { bodyStyles, screenStyle, type DeviceKind } from './geometry';
@@ -13,6 +17,7 @@ interface Props {
   frame: ImageMetadata;
   shot: ImageMetadata;
   alt: string;
+  intro?: { shot: ImageMetadata; alt: string };
   /** Image widths (px) to generate, from the on-screen size at 1x up to 2x. */
   frameWidths: number[];
   shotWidths: number[];
@@ -20,7 +25,7 @@ interface Props {
   sizes: string;
 }
 
-const { kind, frame, shot, alt, frameWidths, shotWidths, sizes } = Astro.props;
+const { kind, frame, shot, alt, intro, frameWidths, shotWidths, sizes } = Astro.props;
 const bodies = bodyStyles(kind);
 ---
 
@@ -38,6 +43,22 @@ const bodies = bodyStyles(kind);
       loading="lazy"
       decoding="async"
     />
+    {
+      intro && (
+        <Picture
+          class="device__shot device__shot--intro"
+          data-intro
+          src={intro.shot}
+          alt={intro.alt}
+          widths={shotWidths}
+          sizes={sizes}
+          formats={['avif', 'webp']}
+          quality={80}
+          loading="lazy"
+          decoding="async"
+        />
+      )
+    }
   </div>
   <Picture
     class="device__frame"
@@ -105,6 +126,17 @@ const bodies = bodyStyles(kind);
   .device--ipad .device__shot,
   .device--iphone .device__shot {
     object-position: center;
+  }
+
+  /* Over the screenshot, and only while the scroll sequence is running. */
+  .device__shot--intro {
+    position: absolute;
+    inset: 0;
+    display: none;
+  }
+
+  :global([data-mode='pinned']) .device__shot--intro {
+    display: block;
   }
 
   .device__frame {

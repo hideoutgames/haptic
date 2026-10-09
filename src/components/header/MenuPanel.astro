@@ -42,8 +42,7 @@ const isCurrent = (p: Page) => p.href === currentPath;
   <div class="menu__notch" aria-hidden="true"></div>
   <div class="menu__surface" aria-hidden="true"></div>
 
-  <!-- data-lenis-prevent: the panel scrolls on short screens; Lenis would otherwise
-       turn the wheel into page scroll. -->
+  {/* data-lenis-prevent: the panel scrolls on short screens; Lenis would otherwise turn the wheel into page scroll. */}
   <div class="menu__body" data-lenis-prevent>
     <p class="menu__label menu__title-left">Haptic Engine</p>
 
@@ -218,6 +217,7 @@ const isCurrent = (p: Page) => p.href === currentPath;
   .menu__foot {
     grid-column: 1 / -1;
     grid-row: 3;
+    /* Footer row sits at y = 431 in the mockup: 66 below the last link, less the grid's row-gap. */
     margin-top: calc(66 * var(--m) - 27 * var(--m));
     display: flex;
     justify-content: space-between;
@@ -239,6 +239,7 @@ const isCurrent = (p: Page) => p.href === currentPath;
 
     .menu__body {
       grid-template-columns: max-content 1fr;
+      column-gap: 24px;
       row-gap: 20px;
     }
 

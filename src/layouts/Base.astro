@@ -2,6 +2,7 @@
 import '@fontsource-variable/onest';
 import 'lenis/dist/lenis.css';
 import '../styles/global.css';
+import { withBase } from '../lib/paths';
 
 interface Props {
   title?: string;
@@ -25,16 +26,18 @@ const {
     <meta property="og:title" content={title} />
     <meta property="og:description" content={description} />
     <meta property="og:type" content="website" />
-    <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
-    <link rel="preload" href="/fonts/licensed/block-berthold.woff2" as="font" type="font/woff2" crossorigin />
-    <link rel="preload" href="/fonts/haptic-serif.woff2" as="font" type="font/woff2" crossorigin />
+    <link rel="icon" href={withBase('/favicon.svg')} type="image/svg+xml" />
+    <link rel="preload" href={withBase('/fonts/licensed/block-berthold.woff2')} as="font" type="font/woff2" crossorigin />
+    <link rel="preload" href={withBase('/fonts/haptic-serif.woff2')} as="font" type="font/woff2" crossorigin />
     <script is:inline>
       // Procedural film grain, generated once per load (no image asset).
       // Each pixel gets one gaussian sample: positive values go into a white
       // "light" tile (added with plus-lighter), negative values into a black
       // "dark" tile (multiplied, at twice the strength). Together they behave
-      // like zero-mean additive noise, so mid-tones keep their colour and
-      // blacks are only lifted by clipping, as in the mockup's noise filter.
+      // like zero-mean additive noise on mid-tones. Near black the dark tile has
+      // nothing to darken, so blacks are lifted by about +9 levels, which is how
+      // the mockup's clipped noise behaves too; the base colours under the grain
+      // are authored lower to match (see --c-bg in global.css).
       (function () {
         try {
           var dpr = Math.min(window.devicePixelRatio || 1, 3);

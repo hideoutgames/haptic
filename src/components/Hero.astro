@@ -148,8 +148,9 @@ const glow = glowBackground();
   .hero__sky-img {
     width: 100%;
     height: auto;
-    /* The photo is a touch brighter than the mockup's once the grain is on top. */
-    filter: brightness(0.8);
+    /* The grain lifts dark tones; pulling the photo's black level down keeps the
+       sky as dark as the mockup's (gain 0.95, offset about -4.5 levels). */
+    filter: brightness(0.92) contrast(1.035);
   }
 
   .hero__glow {
@@ -235,9 +236,10 @@ const glow = glowBackground();
 
   .tagline {
     top: calc(403.5 * var(--u));
-    /* Mockup spacing: slightly wider word gaps, line sits ~5px left of centre. */
+    /* Mockup spacing: slightly wider word gaps, line sits ~4px left of centre
+       (fitted to the ink edges of each word, tuned for Haptic Serif). */
     word-spacing: 0.05em;
-    translate: calc(-4.75 * var(--u)) 0;
+    translate: calc(-4.25 * var(--u)) 0;
     animation: rise 0.9s var(--ease-out) 0.45s both;
   }
 
@@ -371,9 +373,9 @@ const glow = glowBackground();
       /* Title size and the resulting vertical rhythm, so the glow can follow it. */
       --m-title: min(27vw, 200px);
       --m-title-mid: calc(134px + var(--m-title) / 2);
-      --m-window-top: calc(288px + var(--m-title));
+      --m-text: clamp(24px, 3.4vw, 28px);
+      --m-window-top: calc(248px + 2 * var(--m-text) + var(--m-title));
       --m-span: calc(var(--m-window-top) - var(--m-title-mid));
-      --m-text: clamp(20px, 3.4vw, 28px);
 
       height: auto;
       padding-top: 92px;
@@ -441,7 +443,9 @@ const glow = glowBackground();
 
 
     .scroll {
+      width: fit-content;
       margin: 56px auto 0;
+      padding-inline: 12px;
       font-size: clamp(17px, 2.6vw, 21px);
       gap: 6px;
     }

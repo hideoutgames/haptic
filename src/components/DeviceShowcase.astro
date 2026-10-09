@@ -4,23 +4,28 @@
  * showcase (MacBook, then iPad, then iPhone). The timeline lives in
  * scripts/showcase.ts; this file holds the markup, the copy and the layout.
  *
- * Without JS, with reduced motion, or before the script runs, the section is
- * simply its final composition: all devices placed, all lines of copy listed.
- * The script switches it to `data-mode="pinned"`.
+ * Without JS or with reduced motion the section is simply its final
+ * composition: all devices placed, all lines of copy listed. When the
+ * sequence will run, an inline script sets `data-mode="pinned"` before first
+ * paint (devices hidden, one line of copy) and showcase.ts takes over; if it
+ * has not by the time the timer in that script fires, the mode is dropped
+ * again so the page never stays half-built.
  *
- * Desktop measurements are mockup pixels written as calc(N * var(--k)), where
- * --k is --u capped by the viewport height so the composition always fits the
- * pinned screen. The MacBook is the layout anchor: the backdrop bands and the
- * text are positioned from the base of its frame (--ay).
+ * Measurements are mockup pixels written as calc(N * var(--k)), where --k is
+ * --u capped by the viewport height so the composition always fits the pinned
+ * screen. The MacBook is the layout anchor: the backdrop bands and the text
+ * are positioned from the base of its frame (--ay).
  */
 import Grain from './Grain.astro';
 import Device from './showcase/Device.astro';
-import { bandGradient } from './showcase/geometry';
+import { bandStyle } from './showcase/geometry';
+import { STACKED_QUERY } from './showcase/layout';
 import macFrame from '../assets/devices/macbook-pro-16-space-black.png';
 import ipadFrame from '../assets/devices/ipad-pro-11-landscape-space-black.png';
 import iphoneFrame from '../assets/devices/iphone-air-space-black.png';
 import editorTablet from '../assets/editor/editor-tablet.jpg';
 import editorPhone from '../assets/editor/editor-phone.jpg';
+import projectsPhone from '../assets/editor/projects-phone.jpg';
 
 /** Draft copy, one line per scroll step. Edit freely; every line stays in the DOM. */
 const HEADING = 'The engine you can bring anywhere';
@@ -29,19 +34,28 @@ const STEPS = [
   { label: 'iPad', copy: 'Built touch-first for iPad.' },
   { label: 'iPhone', copy: 'Tweak, test and play from your pocket.' },
 ];
+
+// `sizes` attribute of the device images: viewport-relative when stacked.
+const sizesFor = (stacked: string, side: string) => `${STACKED_QUERY} ${stacked}, ${side}`;
 ---
 
 <section id="anywhere" class="showcase" aria-labelledby="anywhere-title" data-showcase data-step="1">
   <script is:inline>
-    // Hide the devices before first paint when the scroll sequence will run
-    // (showcase.ts takes over from here and reverts this for reduced motion).
-    if (!matchMedia('(prefers-reduced-motion: reduce)').matches) {
-      document.currentScript.parentElement.dataset.mode = 'pinned';
-    }
+    // Hide the devices before first paint when the scroll sequence will run.
+    // showcase.ts sets data-ready once it has taken over (and reverts the mode
+    // for reduced motion); if it is blocked, slow or broken, fall back to the
+    // static composition rather than leave the section half-built.
+    (function (root) {
+      if (matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+      root.dataset.mode = 'pinned';
+      setTimeout(function () {
+        if (!root.dataset.ready) delete root.dataset.mode;
+      }, 4000);
+    })(document.currentScript.parentElement);
   </script>
 
   <div class="stage" data-stage>
-    <div class="stage__bg" style={`background: ${bandGradient()}`} aria-hidden="true"></div>
+    <div class="stage__bg" style={bandStyle()} aria-hidden="true"></div>
     <Grain />
 
     <div class="text">
@@ -74,7 +88,7 @@ const STEPS = [
         alt="The Haptic editor on a MacBook Pro."
         frameWidths={[720, 1080, 1446, 1808]}
         shotWidths={[1180, 1760, 2360]}
-        sizes="(max-width: 820px) 100vw, min(56.5vw, 904px)"
+        sizes={sizesFor('100vw', 'min(56.5vw, 904px)')}
       />
       <Device
         kind="ipad"
@@ -83,16 +97,17 @@ const STEPS = [
         alt="The Haptic editor on an iPad Pro."
         frameWidths={[520, 780, 1040]}
         shotWidths={[900, 1400, 2360]}
-        sizes="(max-width: 820px) 72vw, min(32vw, 513px)"
+        sizes={sizesFor('72vw', 'min(32vw, 513px)')}
       />
       <Device
         kind="iphone"
         frame={iphoneFrame}
         shot={editorPhone}
         alt="The Haptic editor on an iPhone."
+        intro={{ shot: projectsPhone, alt: 'The Haptic Projects screen on an iPhone, listing a project to open.' }}
         frameWidths={[240, 480, 720]}
         shotWidths={[375, 750]}
-        sizes="(max-width: 820px) 31vw, min(14.5vw, 232px)"
+        sizes={sizesFor('32vw', 'min(14.5vw, 232px)')}
       />
     </div>
   </div>
@@ -113,6 +128,9 @@ const STEPS = [
     --ay: calc(100svh * 0.66);
     /* Scale of the backdrop bands (they follow the devices on desktop). */
     --kb: var(--k);
+    /* Room between the MacBook base and the bottom of the backdrop, which
+       must end on the page colour (see bandStyle). */
+    --tail: calc(100svh - var(--ay));
     --text-left: max(var(--gutter), calc((100vw - 1600px) / 2 + var(--gutter)));
 
     position: relative;
@@ -122,7 +140,6 @@ const STEPS = [
   .stage {
     position: relative;
     height: 100svh;
-    min-height: 360px;
     overflow: clip;
     background: #0a0908;
   }
@@ -174,7 +191,7 @@ const STEPS = [
     font-size: max(13px, calc(15 * var(--k)));
     letter-spacing: 0.06em;
     text-transform: uppercase;
-    color: var(--c-text-muted);
+    color: rgb(255 255 255 / 0.8);
   }
 
   .step__copy {
@@ -193,6 +210,11 @@ const STEPS = [
   [data-mode='pinned'] .step {
     grid-area: 1 / 1;
     margin: 0;
+  }
+
+  /* The timeline reveals the others (the same opacity it starts them at). */
+  [data-mode='pinned'] .step:not(:first-child) {
+    opacity: 0;
   }
 
   [data-mode='pinned'] .step__copy {
@@ -223,7 +245,7 @@ const STEPS = [
     list-style: none;
     font-size: max(14px, calc(16 * var(--k)));
     letter-spacing: 0.02em;
-    color: rgb(255 255 255 / 0.4);
+    color: rgb(255 255 255 / 0.72);
   }
 
   .progress__list li {
@@ -233,7 +255,7 @@ const STEPS = [
   .progress__list li + li::before {
     content: '·';
     margin-inline: 0.7em;
-    color: rgb(255 255 255 / 0.4);
+    color: rgb(255 255 255 / 0.72);
   }
 
   [data-step='1'] .progress__list li:nth-child(1),
@@ -294,11 +316,31 @@ const STEPS = [
     will-change: transform, opacity;
   }
 
-  /* ---- Tablet portrait and phones: text on top, devices centred below ---- */
-  @media (max-width: 820px) {
+  /* ---- Not pinned: the section grows with its content ----
+     The text sits in the flow, offset by the stage's padding instead of
+     `top`, so a short viewport (or large type) makes the stage taller
+     instead of clipping the copy. */
+  .showcase:not([data-mode='pinned']) .stage {
+    height: auto;
+    min-height: 100svh;
+    padding-top: calc(var(--ay) - 401 * var(--k));
+  }
+
+  .showcase:not([data-mode='pinned']) .text {
+    position: relative;
+    top: auto;
+    left: auto;
+    margin-left: var(--text-left);
+  }
+
+  /* ---- Tablet portrait and phones: text on top, devices centred below ----
+     Same query as STACKED_QUERY (showcase/layout.ts). */
+  @media (max-width: 820px) and (max-aspect-ratio: 1/1) {
     .showcase {
-      /* Rig width = 723 * k ≈ the viewport width. */
-      --k: min(calc(100vw * 0.00138), calc(100svh * 0.00092));
+      /* Rig width = 723 * k ≈ the viewport width; on a short screen k shrinks
+         until the devices (they hang 159 * k below the MacBook) clear the
+         bottom edge by 16px. */
+      --k: min(calc(100vw * 0.00138), calc(100svh * 0.00092), max(0.2px, calc((100svh - 316px) / 638)));
       /* Taller bands than the devices, so the text sits in the blue. */
       --kb: calc(100svh / 940);
       /* Centre the group (MacBook + the devices hanging below it) under the
@@ -345,10 +387,45 @@ const STEPS = [
       width: 72%;
     }
 
+    /* Its right edge reaches the MacBook base's, so no stub of the base
+       sticks out beside it. */
     .rig :global(.device--iphone) {
-      left: 66%;
+      left: 68.5%;
       top: 36%;
-      width: 31%;
+      width: 32%;
+    }
+
+    /* Not pinned: copy, then the devices in the flow below it. The backdrop
+       is anchored to the bottom of the stage, under the MacBook base, since
+       the base's height is no longer known. */
+    .showcase:not([data-mode='pinned']) {
+      /* Space under the MacBook for the devices that hang below it. */
+      --pad: calc(160 * var(--k) + 32px);
+      --ay: calc(553 * var(--kb));
+      --tail: var(--pad);
+    }
+
+    .showcase:not([data-mode='pinned']) .stage {
+      padding: 92px 0 var(--pad);
+      /* What the first band colour continues as, above the backdrop. */
+      background: #0a1622;
+    }
+
+    .showcase:not([data-mode='pinned']) .stage__bg {
+      top: auto;
+      height: calc(var(--ay) + var(--tail));
+    }
+
+    .showcase:not([data-mode='pinned']) .text {
+      right: auto;
+      margin: 0 var(--gutter);
+    }
+
+    .showcase:not([data-mode='pinned']) .rig {
+      position: relative;
+      top: auto;
+      left: auto;
+      margin: 28px auto 0;
     }
   }
 </style>

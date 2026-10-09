@@ -114,10 +114,23 @@ export const BANDS: Array<[y: number, color: string]> = [
   [2160, '#0a0908'],
 ];
 
-export function bandGradient(): string {
+/**
+ * Inline style for the backdrop. Stops above the anchor scale with --kb; the
+ * tail below it uses --kt, the same scale squeezed so that the last stop (the
+ * page colour) lands exactly on the bottom of the band area (--tail below the
+ * anchor). The stage therefore always ends on the page colour, whatever the
+ * viewport shape.
+ */
+export function bandStyle(): string {
+  const tail = BANDS[BANDS.length - 1][0] - BAND_ANCHOR_Y;
   const stops = BANDS.map(([y, color]) => {
     const d = y - BAND_ANCHOR_Y;
-    return `${color} calc(var(--ay) ${d < 0 ? '-' : '+'} ${Math.abs(d)} * var(--kb))`;
+    return d < 0
+      ? `${color} calc(var(--ay) - ${-d} * var(--kb))`
+      : `${color} calc(var(--ay) + ${d} * var(--kt))`;
   });
-  return `linear-gradient(to bottom, ${stops.join(', ')})`;
+  return [
+    `--kt: max(0px, min(var(--kb), calc(var(--tail) / ${tail})))`,
+    `background: linear-gradient(to bottom, ${stops.join(', ')})`,
+  ].join(';');
 }

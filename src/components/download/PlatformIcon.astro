@@ -3,7 +3,7 @@
  * Brand marks as inline SVG, filled with currentColor. Paths come from
  * simple-icons (CC0); it has no Windows mark, so that one is drawn here.
  */
-import { siAndroid, siApple, siAppstore, siGoogleplay, siLinux } from 'simple-icons';
+import { siApple, siLinux } from 'simple-icons';
 import type { IconName } from '../../data/downloads';
 
 interface Props {
@@ -12,9 +12,6 @@ interface Props {
 
 const PATHS: Record<IconName, string> = {
   apple: siApple.path,
-  appstore: siAppstore.path,
-  android: siAndroid.path,
-  googleplay: siGoogleplay.path,
   linux: siLinux.path,
   // Windows 11 mark: four panes with a hairline gap.
   windows: 'M2 2h9.5v9.5H2zM12.5 2H22v9.5h-9.5zM2 12.5h9.5V22H2zM12.5 12.5H22V22h-9.5z',

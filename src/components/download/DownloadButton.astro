@@ -1,11 +1,13 @@
 ---
 /**
- * Large download button. The white face carries the site's chromatic-aberration
- * signature as two soft colour layers behind it, widened horizontally like the
- * HAPTIC title's fringes. Built in HTML/CSS/SVG, so these are our own buttons,
- * not Apple or Google badge artwork.
+ * Large download button. Desktop platforms get our own: the white face carries
+ * the site's chromatic-aberration signature as two soft colour layers behind
+ * it, widened horizontally like the HAPTIC title's fringes. The mobile stores
+ * get their official badge instead (untouched, so no fringes), which only
+ * lifts on hover. Both stay inside the slot's reserved height.
  */
 import PlatformIcon from './PlatformIcon.astro';
+import StoreBadge from './StoreBadge.astro';
 import type { Platform } from '../../data/downloads';
 
 interface Props {
@@ -17,21 +19,21 @@ interface Props {
 const { platform, hidden = false } = Astro.props;
 ---
 
-<a
-  class="dl"
-  href={platform.href}
-  data-primary
-  data-platform-id={platform.id}
-  data-group={platform.group}
-  hidden={hidden}
->
-  <span class="dl__face" aria-hidden="true"></span>
-  <span class="dl__icon"><PlatformIcon name={platform.icon} /></span>
-  <span class="dl__text">
-    <span class="dl__lead">{platform.lead}</span>{' '}
-    <span class="dl__name">{platform.name}</span>
-  </span>
-</a>
+{
+  platform.store ? (
+    <a class="store" href={platform.href} data-primary data-platform-id={platform.id} data-group={platform.group} hidden={hidden}>
+      <StoreBadge store={platform.store} alt={`${platform.lead} ${platform.name}`} />
+    </a>
+  ) : (
+    <a class="dl" href={platform.href} data-primary data-platform-id={platform.id} data-group={platform.group} hidden={hidden}>
+      <span class="dl__face" aria-hidden="true" />
+      <span class="dl__icon">{platform.icon && <PlatformIcon name={platform.icon} />}</span>
+      <span class="dl__text">
+        <span class="dl__lead">{platform.lead}</span> <span class="dl__name">{platform.name}</span>
+      </span>
+    </a>
+  )
+}
 
 <style>
   .dl {
@@ -48,7 +50,8 @@ const { platform, hidden = false } = Astro.props;
     transition: transform 0.35s var(--ease-out);
   }
 
-  .dl[hidden] {
+  .dl[hidden],
+  .store[hidden] {
     display: none;
   }
 
@@ -101,7 +104,7 @@ const { platform, hidden = false } = Astro.props;
   }
 
   .dl__lead {
-    font-size: calc(14 * var(--u));
+    font-size: max(13px, calc(14 * var(--u)));
     line-height: 1.2;
     color: rgb(11 10 8 / 0.62);
   }
@@ -114,7 +117,8 @@ const { platform, hidden = false } = Astro.props;
     white-space: nowrap;
   }
 
-  .dl:hover {
+  .dl:hover,
+  .store:hover {
     transform: translateY(calc(-3 * var(--u)));
   }
 
@@ -128,6 +132,22 @@ const { platform, hidden = false } = Astro.props;
 
   .dl:active {
     transform: translateY(0) scale(0.985);
+  }
+
+  /* The official badge, sized like the button's own height class: 56px, growing only above 1280. */
+  .store {
+    --badge-h: max(56px, calc(56 * var(--u)));
+    display: inline-flex;
+    border-radius: calc(var(--badge-h) * 0.15);
+    transition: transform 0.35s var(--ease-out);
+  }
+
+  .store:active {
+    transform: translateY(0);
+  }
+
+  .store:focus-visible {
+    border-radius: calc(var(--badge-h) * 0.15);
   }
 
   /* The global focus ring squares off the radius; keep the button's own. */
@@ -146,10 +166,6 @@ const { platform, hidden = false } = Astro.props;
 
     .dl__icon {
       font-size: 32px;
-    }
-
-    .dl__lead {
-      font-size: 13px;
     }
 
     .dl__name {
@@ -194,8 +210,21 @@ const { platform, hidden = false } = Astro.props;
   }
 
   @media (prefers-reduced-motion: reduce) {
-    .dl:hover {
+    .dl:hover,
+    .store:hover {
       transform: none;
+    }
+  }
+
+  /* Forced colours replace the white face; give the button an outline and drop the colour fringes. */
+  @media (forced-colors: active) {
+    .dl {
+      border: 2px solid ButtonText;
+    }
+
+    .dl::before,
+    .dl::after {
+      display: none;
     }
   }
 </style>

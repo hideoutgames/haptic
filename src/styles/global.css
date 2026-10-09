@@ -34,7 +34,14 @@
   --gutter: calc(128 * var(--u));
 
   /* Colour */
-  --c-bg: #0b0a08;
+  /* Page black *under the grain*. The grain lifts near-black by about +9 levels
+     (see .grain-layer), so this sits that far below the mockup's measured black
+     (#0b0a08) and the rendered result matches it. Author every dark surface
+     the grain covers the same way: mockup mean - 9. */
+  --c-bg: #010000;
+  /* Canvas outside the sections (overscroll, browser chrome): never grained, so
+     it takes the grained black's mean. */
+  --c-canvas: #0b0a08;
   --c-text: #ffffff;
   --c-text-muted: rgb(255 255 255 / 0.62);
   --c-red: #ff4400;
@@ -63,7 +70,9 @@
 
 @media (max-width: 820px) {
   :root {
-    --gutter: 24px;
+    /* viewport-fit=cover lays the page out under the landscape notch, so the
+       side gutters never go below the safe-area insets. */
+    --gutter: max(24px, env(safe-area-inset-left, 0px), env(safe-area-inset-right, 0px));
   }
 }
 
@@ -74,7 +83,7 @@
 }
 
 html {
-  background: var(--c-bg);
+  background: var(--c-canvas);
   overflow-x: clip;
   -webkit-text-size-adjust: 100%;
   text-size-adjust: 100%;
@@ -83,7 +92,7 @@ html {
 body {
   margin: 0;
   min-height: 100vh;
-  background: var(--c-bg);
+  background: var(--c-canvas);
   color: var(--c-text);
   font-family: var(--font-sans);
   font-weight: 500;
@@ -136,7 +145,14 @@ button {
 /* Procedural film grain (two tiles generated in Base.astro). Use <Grain />
    inside any positioned section: it sits above backgrounds/text and below
    screenshots. The layers must not be wrapped in an element that creates a
-   stacking context of its own, or the blend modes lose their backdrop. */
+   stacking context of its own, or the blend modes lose their backdrop.
+
+   The two tiles cancel out only on mid-tones: with v the backdrop level, the
+   result is about 0.956 * v + 8.8 per channel at the default opacity (the
+   lift is proportional to --grain-opacity), which is mean-preserving only near
+   v = 200. Near black the multiply tile has nothing to darken, so blacks rise
+   by about 9 levels, just as the mockup's clipped noise does. Compensate in
+   the base colours (see --c-bg) instead of weakening the grain. */
 .grain-layer {
   position: absolute;
   inset: 0;
