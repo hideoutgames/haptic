@@ -141,7 +141,7 @@ const sizesFor = (stacked: string, side: string) => `${STACKED_QUERY} ${stacked}
     position: relative;
     height: 100svh;
     overflow: clip;
-    background: #0a0908;
+    background: var(--c-bg);
   }
 
   .stage__bg {
@@ -408,7 +408,7 @@ const sizesFor = (stacked: string, side: string) => `${STACKED_QUERY} ${stacked}
     .showcase:not([data-mode='pinned']) .stage {
       padding: 92px 0 var(--pad);
       /* What the first band colour continues as, above the backdrop. */
-      background: #0a1622;
+      background: #010e1a;
     }
 
     .showcase:not([data-mode='pinned']) .stage__bg {

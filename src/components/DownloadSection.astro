@@ -79,22 +79,26 @@ const LEAD = 'Pick a screen. Start building.';
 
 <script>
   import { initPlatformPicker } from '../scripts/platform';
-  import { gsap, prefersReducedMotion } from '../scripts/motion';
 
   const root = document.querySelector<HTMLElement>('[data-download]');
   if (root) {
+    // Platform detection must not wait on (or fail with) the GSAP chunk.
     initPlatformPicker(root);
 
-    if (!prefersReducedMotion()) {
-      const glow = root.querySelector('[data-reveal-glow]');
-      const items = root.querySelectorAll('[data-reveal]');
-      gsap
-        .timeline({
-          defaults: { ease: 'power3.out' },
-          scrollTrigger: { trigger: root, start: 'top 65%', once: true },
+    if (!window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+      import('../scripts/motion')
+        .then(({ gsap }) => {
+          const glow = root.querySelector('[data-reveal-glow]');
+          const items = root.querySelectorAll('[data-reveal]');
+          gsap
+            .timeline({
+              defaults: { ease: 'power3.out' },
+              scrollTrigger: { trigger: root, start: 'top 65%', once: true },
+            })
+            .from(glow, { opacity: 0, scale: 0.9, duration: 1.6 }, 0)
+            .from(items, { opacity: 0, y: 28, duration: 0.9, stagger: 0.09 }, 0.1);
         })
-        .from(glow, { opacity: 0, scale: 0.9, duration: 1.6 }, 0)
-        .from(items, { opacity: 0, y: 28, duration: 0.9, stagger: 0.09 }, 0.1);
+        .catch(() => {});
     }
   }
 </script>
@@ -105,7 +109,7 @@ const LEAD = 'Pick a screen. Start building.';
     isolation: isolate;
     overflow: clip;
     padding: calc(124 * var(--u)) var(--gutter) calc(150 * var(--u));
-    background: #0a0908;
+    background: var(--c-bg);
   }
 
   .backdrop {

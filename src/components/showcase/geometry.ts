@@ -85,33 +85,35 @@ export function bodyStyles(kind: DeviceKind): string[] {
  * Backdrop bands of the mockup: [page y at 1280px wide, colour]. The gradient
  * is anchored to the MacBook's base (y 1813 in the mockup) so the blue/orange
  * horizon keeps its place relative to the devices at any viewport height.
+ * Colours are the mockup's measured means pre-darkened for the grain's lift
+ * (base = (mockup - 8.8) / 0.956, see --c-bg in global.css).
  */
 export const BAND_ANCHOR_Y = 1813;
 export const BANDS: Array<[y: number, color: string]> = [
-  [1260, '#0a1622'],
-  [1350, '#0b1d2f'],
-  [1440, '#0c2a46'],
-  [1500, '#0c3659'],
-  [1560, '#0d436f'],
-  [1590, '#1c466c'],
-  [1620, '#3a465d'],
-  [1650, '#5a464f'],
-  [1680, '#7a4640'],
-  [1710, '#984530'],
-  [1740, '#b84522'],
-  [1770, '#d74415'],
-  [1800, '#f1440b'],
-  [1830, '#d53908'],
-  [1860, '#a52c08'],
-  [1890, '#7f2309'],
-  [1920, '#5f1b09'],
-  [1950, '#461509'],
-  [1980, '#321109'],
-  [2010, '#240e09'],
-  [2040, '#1a0c09'],
-  [2070, '#130b08'],
-  [2100, '#0e0908'],
-  [2160, '#0a0908'],
+  [1260, '#010e1a'],
+  [1350, '#021528'],
+  [1440, '#032340'],
+  [1500, '#032f54'],
+  [1560, '#043d6b'],
+  [1590, '#144068'],
+  [1620, '#334058'],
+  [1650, '#554049'],
+  [1680, '#76403a'],
+  [1710, '#963f29'],
+  [1740, '#b73f1a'],
+  [1770, '#d83e0d'],
+  [1800, '#ff3e02'],
+  [1830, '#d63200'],
+  [1860, '#a32500'],
+  [1890, '#7c1b00'],
+  [1920, '#5a1300'],
+  [1950, '#400d00'],
+  [1980, '#2b0900'],
+  [2010, '#1c0500'],
+  [2040, '#120300'],
+  [2070, '#0b0200'],
+  [2100, '#050000'],
+  [2160, '#010000'],
 ];
 
 /**

@@ -127,11 +127,11 @@ const glow = glowBackground();
     background: linear-gradient(
       to bottom,
       transparent,
-      rgb(10 22 34 / 0.18) 38%,
-      rgb(10 22 34 / 0.35) 57%,
-      rgb(10 22 34 / 0.53) 76%,
-      rgb(10 22 34 / 0.85) 95%,
-      #0a1622
+      rgb(1 14 26 / 0.18) 38%,
+      rgb(1 14 26 / 0.35) 57%,
+      rgb(1 14 26 / 0.53) 76%,
+      rgb(1 14 26 / 0.85) 95%,
+      #010e1a
     );
   }
 
@@ -467,6 +467,14 @@ const glow = glowBackground();
     .hero__window-img {
       height: auto;
       aspect-ratio: 2360 / 1579;
+    }
+  }
+
+  /* High-contrast modes: drop the decorative colour copies, keep the white text. */
+  @media (forced-colors: active) {
+    .title__ca,
+    .portable__ca {
+      display: none;
     }
   }
 </style>
