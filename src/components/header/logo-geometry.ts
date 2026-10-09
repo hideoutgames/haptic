@@ -42,7 +42,7 @@ const R_STEM_END = 0.9;
 const R_FILLET = 2;
 
 // Bar (open state): 30 × 10.6, bottom-aligned with the H
-const BAR = { x0: -2.5, x1: 27.5, y0: 19.7, y1: 30.45, r: 1.8, innerL: 10, innerR: 15 };
+const BAR = { x0: -2.5, x1: 27.5, y0: 19.7, y1: 30.45, r: 1.8, innerL: 12, innerR: 13 };
 
 type Vertex = [x: number, y: number, radius: number];
 

@@ -9,7 +9,7 @@ Fonts (confirmed from the .afphoto file):
 | Role | Font | Notes |
 |---|---|---|
 | Display: HAPTIC title, logo, giant footer word | **Block Berthold** (`--font-display`) | rough-edged heavy grotesque |
-| Serif: "Hideout Presents", "the … game engine" | **Recoleta** Regular (`--font-serif`) | supplied file is the DEMO cut |
+| Serif: "Hideout Presents", "the … game engine" | **Haptic Serif** (`--font-serif`) | mockup uses Recoleta Regular; replaced by a free Fraunces instance matched to Recoleta's width/weight (approved) |
 | UI / body | **Onest** (`--font-sans`, variable) | Medium 500 for body/UI, Black 900 for "portable" |
 
 ## Global
@@ -79,9 +79,9 @@ Content (all centred on x = 640):
 
 | Element | Spec | Ink box (CSS px) |
 |---|---|---|
-| "Hideout Presents" | Recoleta 400, **32px** | y 149.5 → 173 (cap top → baseline), w 240 |
+| "Hideout Presents" | serif (Haptic Serif) **32px** | y 149.5 → 173 (cap top → baseline), w 240 |
 | "HAPTIC" | Block Berthold, **172px**, tracking 0, CA (above) | white ink y 253.5 → 375.5, x 383 → 896 |
-| "the **portable** game engine" | Recoleta 400 32px + Onest 900 32px for "portable" | y 407.5 → 437.5, x 448.5 → 820.5 |
+| "the **portable** game engine" | serif 32px + Onest 900 32px for "portable" | y 407.5 → 437.5, x 448.5 → 820.5 |
 | "Scroll to find out more" | Onest 500, **24px** | y 528 → 545.5, w 252 |
 | Chevron (down) | thin stroke chevron ≈ 14 × 7.5, ~1.5px stroke | y 554 → 561 |
 | Editor window | iPad screenshot `editor-tablet.jpg` with its iPad status bar cropped off (top ≈ 61 of 1640 source px), radius ≈ 12, 1px dark border | x 128 → 1152 (w 1024), y 577.5 → ~1262.5 |

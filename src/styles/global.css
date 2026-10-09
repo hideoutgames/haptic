@@ -16,16 +16,8 @@
   font-display: block;
 }
 
-/* Recoleta DEMO is local-only (not licensed for publishing). */
-@font-face {
-  font-family: 'Recoleta';
-  src: url('/fonts/licensed/recoleta-regular.woff2') format('woff2');
-  font-weight: 400;
-  font-style: normal;
-  font-display: swap;
-}
-
-/* Free stand-in for Recoleta: Fraunces (OFL) instanced at opsz 24, wght 360, SOFT 50, condensed to 96.5%. */
+/* Serif: Fraunces (OFL) instanced at opsz 24, wght 360, SOFT 50 and condensed to 96.5%
+   to match the mockup's Recoleta. See public/fonts/OFL-haptic-serif.txt. */
 @font-face {
   font-family: 'Haptic Serif';
   src: url('/fonts/haptic-serif.woff2') format('woff2');
@@ -53,7 +45,7 @@
 
   /* Type */
   --font-display: 'Block Berthold', 'Arial Black', 'Helvetica Neue', sans-serif;
-  --font-serif: 'Recoleta', 'Haptic Serif', 'Iowan Old Style', Georgia, serif;
+  --font-serif: 'Haptic Serif', 'Iowan Old Style', Georgia, serif;
   --font-sans: 'Onest Variable', 'Onest', ui-sans-serif, system-ui, -apple-system, 'Segoe UI', sans-serif;
 
   /* Grain (texture is generated at runtime in Base.astro) */
