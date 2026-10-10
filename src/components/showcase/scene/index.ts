@@ -71,7 +71,7 @@ const RATIOS = [2, 1.5, 1.25, 1];
 /** A software renderer steps down from its budget ratio by these factors. */
 const SOFTWARE_STEPS = [1, 0.85, 0.72];
 
-const SCREEN_SIZES = { tablet: { w: 2360, h: 1640 }, phone: { w: 750, h: 1640 }, projects: { w: 1179, h: 2556 } };
+const SCREEN_SIZES = { tablet: { w: 2360, h: 1640 }, projects: { w: 1179, h: 2556 } };
 
 /** Ratios from largest to smallest for a canvas of this size. */
 function ladderFor(width: number, height: number, lite: boolean): number[] {
@@ -126,10 +126,7 @@ export async function createShowcaseScene(opts: SceneOptions): Promise<ShowcaseS
 
   const mac = createMacBook(materials, textures.tablet, SCREEN_SIZES.tablet, lite);
   const ipad = createIPad(materials, textures.tablet, SCREEN_SIZES.tablet);
-  const phone = createIPhone(materials, textures.phone, textures.projects, {
-    editor: SCREEN_SIZES.phone,
-    projects: SCREEN_SIZES.projects,
-  });
+  const phone = createIPhone(materials, textures.projects, SCREEN_SIZES.projects);
   // Devices and their shadows share one group, so the whole set can be shifted.
   const world = new Group();
   const devices = new Group();
@@ -310,7 +307,6 @@ export async function createShowcaseScene(opts: SceneOptions): Promise<ShowcaseS
     // Everything is posed from states of its own: the scrubbed one belongs to
     // the timeline, which keeps running while this awaits.
     const warm = finalState();
-    warm.phoneEditor = 0.5;
 
     // Textures first (uploads and mipmaps), so no first use during scrolling.
     const seen = new Set<Texture>();
@@ -348,9 +344,9 @@ export async function createShowcaseScene(opts: SceneOptions): Promise<ShowcaseS
     });
     const gl = renderer.getContext();
     const px = new Uint8Array(4);
-    const states: Array<Partial<SceneState>> = lite ? [{}] : [{ ipad: 0, phone: 0 }, { phone: 0 }, { flip: 0, phoneEditor: 0 }, {}];
+    const states: Array<Partial<SceneState>> = lite ? [{}] : [{ ipad: 0, phone: 0 }, { phone: 0 }, { flip: 0 }, {}];
     for (const patch of states) {
-      Object.assign(warm, finalState(), { phoneEditor: 0.5 }, patch);
+      Object.assign(warm, finalState(), patch);
       pose(warm);
       renderer.render(scene, camera);
       // Wait for the GPU: drivers finish their lazy work at the first draw.

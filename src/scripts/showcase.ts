@@ -11,8 +11,7 @@
  *   2.25 – 2.50      hold: "iPad"
  *   2.50 – 3.00      the iPhone rises into place, back to the viewer
  *   2.85 – 3.95      it turns slowly to face front, showing Projects
- *   3.80 – 4.20      Projects cross-fades to the editor
- *   4.20 – 4.50      final hold, then the pin releases
+ *   3.95 – 4.35      final hold, then the pin releases
  *
  * Everything is eased with sine / power2 in-outs (no overshoot), scrubbed with
  * a long catch-up, and played in reverse when scrolling back. The camera
@@ -52,7 +51,7 @@ import { getLenis, gsap, initSmoothScroll, ScrollTrigger } from './motion';
 import { track } from './preload';
 
 /** Pin length as a multiple of the screen height. */
-const PIN_SCREENS = { side: 4.5, stacked: 3.95 };
+const PIN_SCREENS = { side: 4.35, stacked: 3.8 };
 
 /**
  * The pinned timeline, in units of the side layout's pin length divided by its
@@ -72,11 +71,8 @@ const T = {
   phoneDur: 0.5,
   flip: 2.85,
   flipDur: 1.1,
-  /** Projects cross-fades to the editor, starting in the tail of the turn. */
-  editor: 3.8,
-  editorDur: 0.4,
   /** End of the pin: everything is held from the last move to here. */
-  end: 4.5,
+  end: 4.35,
 };
 
 /** How long a line of copy takes to fade out (and, after it, in). */
@@ -112,7 +108,6 @@ export function initShowcase(root: HTMLElement): void {
   const mac = pick('[data-device="mac"]');
   const ipad = pick('[data-device="ipad"]');
   const iphone = pick('[data-device="iphone"]');
-  const projects = pick('[data-intro]');
   const fill = pick('[data-progress]');
   const rig = pick('.rig');
   const copy = gsap.utils.toArray<HTMLElement>('[data-copy]', root);
@@ -233,12 +228,6 @@ export function initShowcase(root: HTMLElement): void {
     tl.fromTo(S, { flip: 0 }, { flip: 1, duration: T.flipDur }, T.flip);
     tl.to(group, { yPercent: 0, duration: T.phoneDur }, T.phone);
 
-    // It arrives on the Projects screen, then opens the project.
-    if (projects) {
-      tl.fromTo(projects, { opacity: 1 }, { opacity: 0, duration: T.editorDur }, T.editor);
-    }
-    tl.fromTo(S, { phoneEditor: 0 }, { phoneEditor: 1, duration: T.editorDur }, T.editor);
-
     // Copy: the old line is gone completely before the next one fades in.
     const swap = (from: HTMLElement, to: HTMLElement, at: number) => {
       tl.to(from, { opacity: 0, yPercent: -20, duration: COPY_FADE }, at - COPY_FADE);
@@ -267,10 +256,9 @@ export function initShowcase(root: HTMLElement): void {
       const startScene = async (report: (p: number) => void): Promise<void> => {
         const urls = {
           tablet: root.dataset.texTablet ?? '',
-          phone: root.dataset.texPhone ?? '',
           projects: root.dataset.texProjects ?? '',
         };
-        if (!urls.tablet || !urls.phone || !urls.projects) return;
+        if (!urls.tablet || !urls.projects) return;
 
         const { createShowcaseScene } = await import('../components/showcase/scene');
         report(0.05);

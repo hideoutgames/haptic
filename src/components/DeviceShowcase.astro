@@ -37,7 +37,6 @@ import macFrame from '../assets/devices/macbook-pro-16-space-black.png';
 import ipadFrame from '../assets/devices/ipad-pro-11-landscape-space-black.png';
 import iphoneFrame from '../assets/devices/iphone-air-space-black.png';
 import editorTablet from '../assets/editor/editor-tablet.jpg';
-import editorPhone from '../assets/editor/editor-phone.jpg';
 import projectsPhone from '../assets/editor/projects-phone.jpg';
 
 /** Draft copy, one line per scroll step. Edit freely; every line stays in the DOM. */
@@ -49,9 +48,8 @@ const STEPS = [
 ];
 
 // Screen textures for the 3D scene (sRGB webp, sized for the screens they fill).
-const [texTablet, texPhone, texProjects] = await Promise.all([
+const [texTablet, texProjects] = await Promise.all([
   getImage({ src: editorTablet, format: 'webp', width: 2048, quality: 84 }),
-  getImage({ src: editorPhone, format: 'webp', width: 750, quality: 86 }),
   getImage({ src: projectsPhone, format: 'webp', width: 1024, quality: 86 }),
 ]);
 
@@ -59,7 +57,7 @@ const [texTablet, texPhone, texProjects] = await Promise.all([
 const sizesFor = (stacked: string, side: string) => `${STACKED_QUERY} ${stacked}, ${side}`;
 ---
 
-<section id="anywhere" class="showcase" aria-labelledby="anywhere-title" data-showcase data-step="1" data-tex-tablet={texTablet.src} data-tex-phone={texPhone.src} data-tex-projects={texProjects.src}>
+<section id="anywhere" class="showcase" aria-labelledby="anywhere-title" data-showcase data-step="1" data-tex-tablet={texTablet.src} data-tex-projects={texProjects.src}>
   <script is:inline>
     // Hide the devices before first paint when the scroll sequence will run.
     // showcase.ts sets data-ready once it has taken over (and reverts the mode
@@ -123,9 +121,8 @@ const sizesFor = (stacked: string, side: string) => `${STACKED_QUERY} ${stacked}
         <Device
           kind="iphone"
           frame={iphoneFrame}
-          shot={editorPhone}
-          alt="The Haptic editor on an iPhone."
-          intro={{ shot: projectsPhone, alt: 'The Haptic Projects screen on an iPhone, listing a project to open.' }}
+          shot={projectsPhone}
+          alt="The Haptic Projects screen on an iPhone."
           frameWidths={[240, 480, 720]}
           shotWidths={[375, 750]}
           sizes={sizesFor('43vw', 'min(14.5vw, 232px)')}

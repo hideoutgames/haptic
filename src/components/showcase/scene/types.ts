@@ -28,8 +28,6 @@ export interface SceneState {
   phone: number;
   /** iPhone turns from its back to its front. */
   flip: number;
-  /** iPhone screen: Projects (0) to the editor (1). */
-  phoneEditor: number;
   /** Camera: a very slow dolly-in over the whole sequence (1 = the framed distance). */
   dolly: number;
 }
@@ -42,7 +40,6 @@ export const initialState = (): SceneState => ({
   ipad: 0,
   phone: 0,
   flip: 0,
-  phoneEditor: 0,
   dolly: 0,
 });
 
@@ -54,7 +51,6 @@ export const finalState = (): SceneState => ({
   ipad: 1,
   phone: 1,
   flip: 1,
-  phoneEditor: 1,
   dolly: 1,
 });
 

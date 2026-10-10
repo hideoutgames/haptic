@@ -3,12 +3,13 @@
  *
  *   156.2 × 74.7 × 5.64, polished titanium frame, 6.5" display with rounded
  *   corners and Dynamic Island, and the camera plateau across the top of the
- *   back, which carries the single lens and flash.
+ *   back, which carries the single lens and flash. The screen shows Haptic's
+ *   Projects screen.
  *
  * Frame: portrait, origin at the middle of the bottom edge, +Y up, front
  * (screen) towards +Z. Standing on `y = 0`.
  */
-import { CircleGeometry, Color, CylinderGeometry, Group, Mesh, MeshBasicMaterial, TorusGeometry, type Texture } from 'three';
+import { CircleGeometry, CylinderGeometry, Group, Mesh, MeshBasicMaterial, TorusGeometry, type Texture } from 'three';
 import type { Materials } from './materials';
 import { coverUV, flatShape, roundedRectOutline, slab, translateOutline } from './shapes';
 
@@ -23,16 +24,9 @@ export const IPHONE = {
 
 export interface IPhone {
   group: Group;
-  /** Crossfade between the Projects screen (0) and the editor (1). */
-  setEditor(amount: number): void;
 }
 
-export function createIPhone(
-  m: Materials,
-  editor: Texture,
-  projects: Texture,
-  sizes: { editor: { w: number; h: number }; projects: { w: number; h: number } },
-): IPhone {
+export function createIPhone(m: Materials, screen: Texture, texSize: { w: number; h: number }): IPhone {
   const group = new Group();
   const { width: W, height: H, thickness: T } = IPHONE;
   const front = T / 2;
@@ -48,17 +42,15 @@ export function createIPhone(
   // ---- Screen ----
   const { w: dw, h: dh, r } = IPHONE.display;
   const screenOutline = translateOutline(roundedRectOutline(dw, dh, r, 12, 2.6), 0, H / 2);
-  const uvFor = (s: { w: number; h: number }) => coverUV({ width: dw, height: dh, texW: s.w, texH: s.h, anchorY: 0.5, centerY: H / 2 });
-  const editorMat = new MeshBasicMaterial({ map: editor, toneMapped: false });
-  const editorMesh = new Mesh(flatShape({ outline: screenOutline, uv: uvFor(sizes.editor) }), editorMat);
-  editorMesh.position.z = front + 0.05;
-  group.add(editorMesh);
-
-  const projectsMat = new MeshBasicMaterial({ map: projects, toneMapped: false, transparent: true, depthWrite: false });
-  const projectsMesh = new Mesh(flatShape({ outline: screenOutline, uv: uvFor(sizes.projects) }), projectsMat);
-  projectsMesh.position.z = front + 0.08;
-  projectsMesh.renderOrder = 1;
-  group.add(projectsMesh);
+  const display = new Mesh(
+    flatShape({
+      outline: screenOutline,
+      uv: coverUV({ width: dw, height: dh, texW: texSize.w, texH: texSize.h, anchorY: 0.5, centerY: H / 2 }),
+    }),
+    new MeshBasicMaterial({ map: screen, toneMapped: false }),
+  );
+  display.position.z = front + 0.05;
+  group.add(display);
 
   // Dynamic Island.
   const island = new Mesh(
@@ -132,14 +124,5 @@ export function createIPhone(
   mic.position.set(14, -4.5, 0.05);
   lensGroup.add(mic);
 
-  const tint = new Color();
-  const setEditor = (amount: number) => {
-    const a = Math.max(0, Math.min(1, amount));
-    projectsMat.opacity = 1 - a;
-    projectsMesh.visible = a < 0.999;
-    void tint;
-  };
-  setEditor(1);
-
-  return { group, setEditor };
+  return { group };
 }

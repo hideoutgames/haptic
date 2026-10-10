@@ -190,7 +190,6 @@ export function applyState(models: Models, s: SceneState, L: Layout): Placement 
     const f = L.phone;
     const y = -(1 - q) * PHONE_RISE;
     place(phone.group, f.x, y, f.z, lerp(Math.PI, f.yaw, clamp01(s.flip)), f.pitch);
-    phone.setEditor(s.phoneEditor);
   }
 
   const p = placement;

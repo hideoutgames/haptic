@@ -11,11 +11,10 @@ export type { ScreenUrls };
 
 export interface ScreenTextures {
   tablet: Texture;
-  phone: Texture;
   projects: Texture;
 }
 
-/** Loads the three screenshots, reporting progress (0–1) as each one arrives. */
+/** Loads the two screenshots, reporting progress (0–1) as each one arrives. */
 export async function loadScreens(urls: ScreenUrls, renderer: WebGLRenderer, report: (p: number) => void): Promise<ScreenTextures> {
   const loader = new TextureLoader();
   const anisotropy = renderer.capabilities.getMaxAnisotropy();
@@ -28,11 +27,11 @@ export async function loadScreens(urls: ScreenUrls, renderer: WebGLRenderer, rep
       tex.minFilter = LinearMipmapLinearFilter;
       tex.magFilter = LinearFilter;
       tex.wrapS = tex.wrapT = ClampToEdgeWrapping;
-      report(++done / 3);
+      report(++done / 2);
       return tex;
     });
-  const [tablet, phone, projects] = await Promise.all([load(urls.tablet), load(urls.phone), load(urls.projects)]);
-  return { tablet, phone, projects };
+  const [tablet, projects] = await Promise.all([load(urls.tablet), load(urls.projects)]);
+  return { tablet, projects };
 }
 
 function canvas(w: number, h: number): [HTMLCanvasElement, CanvasRenderingContext2D] {
