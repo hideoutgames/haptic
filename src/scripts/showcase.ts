@@ -26,7 +26,7 @@
  */
 import { STACKED_QUERY } from '../components/showcase/layout';
 import { initialState, type SceneState, type ShowcaseScene } from '../components/showcase/scene/types';
-import { getLenis, gsap, ScrollTrigger } from './motion';
+import { getLenis, gsap, initSmoothScroll, ScrollTrigger } from './motion';
 import { track } from './preload';
 
 /** Pin length as a multiple of the screen height. */
@@ -154,7 +154,9 @@ export function initShowcase(root: HTMLElement): void {
     // drives the scroll, from the main thread in the same frame, the pin is a
     // transform instead. Touch devices scroll natively, off the main thread,
     // and would see a transform-pinned stage lag behind: they keep the default.
-    const smoothScrolled = !!getLenis() && !matchMedia('(any-pointer: coarse)').matches;
+    // This script runs before the layout's own, so Lenis may not exist yet:
+    // initSmoothScroll is idempotent, and asking for it here settles the question.
+    const smoothScrolled = !!(getLenis() ?? initSmoothScroll()) && !matchMedia('(any-pointer: coarse)').matches;
     const tl = gsap.timeline({
       defaults: { ease: 'power2.inOut' },
       onUpdate: invalidate,
