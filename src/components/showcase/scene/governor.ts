@@ -6,8 +6,12 @@
  *    frames, so the drawing buffer should shrink one step (the scene maps the
  *    steps to pixel ratios: 2, 1.5, 1.25, 1);
  *  - `raise`: it has been comfortably fast for a long stretch, so try one step
- *    up. If that step turns out too slow, it is never tried again (no
- *    flapping between two sizes);
+ *    up. The step is on probation until it has lasted `PROVEN` frames: if it
+ *    has to be left before that, it is tried again only after a stretch of
+ *    fast frames `RETRY_GROWTH` times as long as the last, and after
+ *    `MAX_FAILURES` such failures not at all (no flapping between two sizes).
+ *    A step that passed its probation counts as sustainable: a later slowdown
+ *    (a hitch, another app) lowers it as usual, and it is soon tried again;
  *  - `unusable`, once: the median of the first frames is so slow (software
  *    rendering on a weak machine) that the page should go back to its 2D rig.
  *
@@ -42,11 +46,17 @@ export const SOFTWARE_CONFIG: GovernorConfig = { slowMs: 50, window: 20, fastMs:
 const MAX_GAP = 250;
 /** Frames ignored after the drawing buffer changed (it is reallocated and cleared). */
 const SETTLE = 3;
+/** Frames a raised level must last to pass its probation (about 30 s of drawing at 60 Hz). */
+const PROVEN = 1800;
+/** Each failed probation multiplies the fast stretch needed before the level is tried again by this. */
+const RETRY_GROWTH = 4;
+/** Failed probations after which a level is not tried again. */
+const MAX_FAILURES = 2;
 
 export class FrameGovernor {
   /** 0 = the largest drawing buffer; `cfg.steps` = the smallest. */
   level = 0;
-  /** The best level that is still allowed (raised after a failed attempt to climb). */
+  /** The best level that may still be tried (raised once a level has failed `MAX_FAILURES` probations). */
   ceiling = 0;
 
   private readonly ring: Float32Array;
@@ -57,13 +67,15 @@ export class FrameGovernor {
   private skip = 0;
   private fastFrames = 0;
   /**
-   * The current level was reached by a raise. If it has to be left again,
-   * however much later (the scroll reached a heavier part of the scene), it
-   * is not tried again: otherwise the light and heavy parts of the sequence
+   * Frames since the current level was reached by a raise, while it is on
+   * probation; -1 otherwise. A raise that fails its probation usually means
+   * the scroll reached a heavier part of the scene: retrying it at once
    * would switch the resolution back and forth every few seconds, which
    * shows as the fine detail (key legends, grilles) popping.
    */
-  private probing = false;
+  private probation = -1;
+  /** Failed probations per level (index = level). */
+  private readonly failures: Uint8Array;
   private netCount = 0;
   private netOpen: boolean;
   private lastNow = -1;
@@ -82,6 +94,7 @@ export class FrameGovernor {
     this.scratch = new Float32Array(cfg.window);
     this.net = new Float32Array(Math.max(1, cfg.netFrames));
     this.netOpen = cfg.netFrames > 0;
+    this.failures = new Uint8Array(cfg.steps + 1);
   }
 
   /** The ladder of drawing-buffer sizes changed length (new canvas size or pixel ratio). */
@@ -123,6 +136,11 @@ export class FrameGovernor {
     this.ring[this.head] = dt;
     this.head = (this.head + 1) % this.cfg.window;
     if (this.count < this.cfg.window) this.count++;
+    if (this.probation >= 0 && ++this.probation >= PROVEN) {
+      // The raise has proved itself: forget the failures of this level.
+      this.failures[this.level] = 0;
+      this.probation = -1;
+    }
 
     if (this.netOpen) {
       this.net[this.netCount++] = dt;
@@ -138,18 +156,18 @@ export class FrameGovernor {
     const m = (this.lastMedian = median(this.scratch, this.scratch));
 
     if (m > this.cfg.slowMs && this.level < this.steps) {
-      // A step up that was too slow: remember not to try it again.
-      if (this.probing) this.ceiling = this.level + 1;
-      this.probing = false;
+      // A step up that failed its probation: wait longer before the next try, or give it up.
+      if (this.probation >= 0 && ++this.failures[this.level] >= MAX_FAILURES) this.ceiling = this.level + 1;
+      this.probation = -1;
       this.level++;
       this.reset();
       return 'lower';
     }
 
     if (this.cfg.fastMs > 0 && m <= this.cfg.fastMs && this.level > this.ceiling) {
-      if (++this.fastFrames >= this.cfg.raiseAfter) {
+      if (++this.fastFrames >= this.cfg.raiseAfter * RETRY_GROWTH ** this.failures[this.level - 1]) {
         this.level--;
-        this.probing = true;
+        this.probation = 0;
         this.reset();
         return 'raise';
       }

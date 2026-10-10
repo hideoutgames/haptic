@@ -219,18 +219,20 @@ export async function createShowcaseScene(opts: SceneOptions): Promise<ShowcaseS
   };
 
   /**
-   * Everything the choreography can show, per layout: the world-space box
+   * Everything the choreography can show: the world-space box
    * around the devices and their shadows in sampled poses (each state value
    * swept on its own, from the start and from the finished state, which covers
    * every device whose pose follows its own values). The poses themselves
    * live in choreography.ts; this only measures them, so it follows changes
-   * there. Measured once per layout (a few milliseconds).
+   * there. Measured again whenever the layout or the canvas size changes (a
+   * few milliseconds), since poses may depend on the viewport.
    */
-  const reach = new Map<Layout['id'], Box3>();
+  const reach = new Box3();
+  let reachKey = '';
   const sceneReach = (): Box3 => {
-    const known = reach.get(layout.id);
-    if (known) return known;
-    const box = new Box3();
+    const id = `${layout.id} ${cssWidth}x${cssHeight}`;
+    if (id === reachKey) return reach;
+    const box = reach.makeEmpty();
     const sample = initialState();
     const STEPS = 8;
     for (const from of [initialState, finalState]) {
@@ -243,7 +245,7 @@ export async function createShowcaseScene(opts: SceneOptions): Promise<ShowcaseS
         }
       }
     }
-    reach.set(layout.id, box);
+    reachKey = id;
     return box;
   };
 
