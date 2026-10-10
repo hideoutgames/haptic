@@ -11,6 +11,12 @@
  * Pages without the preloader never get the `is-loading` class (it is set by
  * the inline script in Base.astro only when `preload` is on), so `ready`
  * resolves immediately there.
+ *
+ * For modules that register work: call `track()` synchronously while your module
+ * evaluates (not after an await or a timer). The preloader waits for
+ * DOMContentLoaded, by which time every page script has evaluated, and then
+ * treats work registered later than ~150 ms after everything else finished as
+ * too late to hold the page (it still runs, it just no longer counts).
  */
 
 type Entry = { weight: number; progress: number };
@@ -55,7 +61,14 @@ export function track<T>(
     entry.progress = Math.max(entry.progress, Math.min(1, p));
     emit();
   };
-  const promise = typeof work === 'function' ? work(report) : work;
+  let promise: Promise<T>;
+  try {
+    promise = typeof work === 'function' ? work(report) : work;
+  } catch (error) {
+    // A task that throws while starting must not hold the page.
+    report(1);
+    throw error;
+  }
   const done = () => report(1);
   promise.then(done, done);
   return promise;
@@ -81,4 +94,17 @@ export function finish(): void {
   window.dispatchEvent(new Event('haptic:ready'));
 }
 
-if (!document.documentElement.classList.contains('is-loading')) finish();
+const html = document.documentElement;
+if (!html.classList.contains('is-loading')) {
+  finish();
+} else {
+  // Something other than the preloader lifted the hold (its inline fail-safe, if
+  // the preloader script never ran): still release `ready` for everyone waiting.
+  const watcher = new MutationObserver(() => {
+    if (!html.classList.contains('is-loading')) {
+      watcher.disconnect();
+      finish();
+    }
+  });
+  watcher.observe(html, { attributes: true, attributeFilter: ['class'] });
+}

@@ -88,10 +88,13 @@ const skySide = `--sky-left: ${skyEdges.left}; --sky-right: ${skyEdges.right}; -
 </section>
 
 <script>
-  import { initHeroParallax } from './hero/hero-motion';
+  import { initHeroLoadIn, initHeroParallax } from './hero/hero-motion';
 
   const hero = document.querySelector<HTMLElement>('[data-hero]');
-  if (hero) initHeroParallax(hero);
+  if (hero) {
+    initHeroLoadIn();
+    initHeroParallax(hero);
+  }
 </script>
 
 <style>
