@@ -1,0 +1,100 @@
+---
+import '@fontsource-variable/onest';
+import 'lenis/dist/lenis.css';
+import '../styles/global.css';
+import { withBase } from '../lib/paths';
+
+interface Props {
+  title?: string;
+  description?: string;
+  /** Show the intro preloader (once per browser session). See src/scripts/preload.ts. */
+  preload?: boolean;
+}
+
+const {
+  title = 'Haptic — the portable game engine',
+  description = 'Haptic by Hideout is a touch-first game engine you can bring anywhere: iPad, iPhone, Android, Mac, Windows and Linux.',
+  preload = false,
+} = Astro.props;
+---
+
+<!doctype html>
+<html lang="en" data-preload={preload ? '' : undefined}>
+  <head>
+    <meta charset="utf-8" />
+    <script is:inline>
+      // Hold the page behind the intro preloader only when JS runs, the page
+      // opts in, and the intro has not been shown in this session yet.
+      (function () {
+        var d = document.documentElement;
+        if (!d.hasAttribute('data-preload')) return;
+        try {
+          if (sessionStorage.getItem('haptic:intro-seen')) return;
+        } catch (e) {}
+        d.classList.add('is-loading');
+      })();
+    </script>
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <title>{title}</title>
+    <meta name="description" content={description} />
+    <meta name="theme-color" content="#0b0a08" />
+    <meta property="og:title" content={title} />
+    <meta property="og:description" content={description} />
+    <meta property="og:type" content="website" />
+    <link rel="icon" href={withBase('/favicon.svg')} type="image/svg+xml" />
+    <link rel="preload" href={withBase('/fonts/licensed/block-berthold.woff2')} as="font" type="font/woff2" crossorigin />
+    <link rel="preload" href={withBase('/fonts/haptic-serif.woff2')} as="font" type="font/woff2" crossorigin />
+    <script is:inline>
+      // Procedural film grain, generated once per load (no image asset).
+      // Each pixel gets one gaussian sample: positive values go into a white
+      // "light" tile (added with plus-lighter), negative values into a black
+      // "dark" tile (multiplied). Together they behave
+      // like zero-mean additive noise on mid-tones. Near black the dark tile has
+      // nothing to darken, so blacks are lifted by about +9 levels, which is how
+      // the mockup's clipped noise behaves too; the base colours under the grain
+      // are authored lower to match (see --c-bg in global.css).
+      (function () {
+        try {
+          var dpr = Math.min(window.devicePixelRatio || 1, 3);
+          var n = 256;
+          function tile() {
+            var c = document.createElement('canvas');
+            c.width = c.height = n;
+            return c;
+          }
+          var lc = tile(), dc = tile(), mc = tile();
+          var lctx = lc.getContext('2d'), dctx = dc.getContext('2d'), mctx = mc.getContext('2d');
+          var li = lctx.createImageData(n, n), di = dctx.createImageData(n, n), mi = mctx.createImageData(n, n);
+          var l = li.data, d = di.data, m = mi.data;
+          for (var i = 0; i < l.length; i += 4) {
+            // Box-Muller gaussian
+            var g = Math.sqrt(-2 * Math.log(1 - Math.random())) * Math.cos(6.283185307 * Math.random());
+            l[i] = l[i + 1] = l[i + 2] = 255;
+            if (g > 0) l[i + 3] = Math.min(255, g * 88);
+            else d[i + 3] = Math.min(255, -g * 90);
+            // Mid-tone layer (overlay): grey around 128, so it adds noise to
+            // mid-tones only and leaves blacks and whites untouched.
+            var v = Math.max(0, Math.min(255, 128 + g * 64));
+            m[i] = m[i + 1] = m[i + 2] = v;
+            m[i + 3] = 255;
+          }
+          lctx.putImageData(li, 0, 0);
+          dctx.putImageData(di, 0, 0);
+          mctx.putImageData(mi, 0, 0);
+          var s = document.documentElement.style;
+          s.setProperty('--grain-light', 'url(' + lc.toDataURL('image/png') + ')');
+          s.setProperty('--grain-dark', 'url(' + dc.toDataURL('image/png') + ')');
+          s.setProperty('--grain-mid', 'url(' + mc.toDataURL('image/png') + ')');
+          s.setProperty('--grain-size', n / dpr + 'px');
+        } catch (e) {}
+      })();
+    </script>
+  </head>
+  <body>
+    <slot />
+    <script>
+      import { initSmoothScroll } from '../scripts/motion';
+      initSmoothScroll();
+    </script>
+  </body>
+</html>

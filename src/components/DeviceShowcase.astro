@@ -1,0 +1,520 @@
+---
+/**
+ * "The engine you can bring anywhere": a pinned, scroll-scrubbed device
+ * showcase (MacBook, then iPad, then iPhone). The timeline lives in
+ * scripts/showcase.ts; this file holds the markup, the copy and the layout.
+ *
+ * Without JS or with reduced motion the section is simply its final
+ * composition: all devices placed, all lines of copy listed. When the
+ * sequence will run, an inline script sets `data-mode="pinned"` before first
+ * paint (devices hidden, one line of copy) and showcase.ts takes over; if it
+ * has not by the time the timer in that script fires, the mode is dropped
+ * again so the page never stays half-built.
+ *
+ * The devices are 3D models drawn on a canvas (components/showcase/scene,
+ * loaded lazily) when WebGL2 is available, on a real GPU or a software
+ * renderer (which gets a cheaper configuration): showcase.ts then sets
+ * `data-scene="on"`, which shows the canvas and hides the 2D rig below
+ * (visibility only, so nothing moves). The 2D rig stays as the default and
+ * the fallback (also if the scene turns out too slow to use, or with
+ * `?no3d`), and its texture URLs for the 3D screens come from here.
+ *
+ * Measurements are mockup pixels written as calc(N * var(--k)), where --k is
+ * --u capped by the viewport height so the composition always fits the pinned
+ * screen. The MacBook is the layout anchor: the backdrop bands and the text
+ * are positioned from the base of its frame (--ay).
+ *
+ * On phones and portrait tablets the devices are stacked under the copy
+ * instead: the stage turns into a column and the devices are sized to the
+ * space the copy leaves (see the last media query).
+ */
+import { getImage } from 'astro:assets';
+import Grain from './Grain.astro';
+import Device from './showcase/Device.astro';
+import { bandStyle } from './showcase/geometry';
+import { STACKED_QUERY } from './showcase/layout';
+import macFrame from '../assets/devices/macbook-pro-16-space-black.png';
+import ipadFrame from '../assets/devices/ipad-pro-11-landscape-space-black.png';
+import iphoneFrame from '../assets/devices/iphone-air-space-black.png';
+import editorTablet from '../assets/editor/editor-tablet.jpg';
+import projectsPhone from '../assets/editor/projects-phone.jpg';
+
+/** Draft copy, one line per scroll step. Edit freely; every line stays in the DOM. */
+const HEADING = 'The engine you can bring anywhere';
+const STEPS = [
+  { label: 'Desktop', copy: 'A full desktop editor for Mac, Windows and Linux.' },
+  { label: 'Tablet', copy: 'Built touch-first for iPad.' },
+  { label: 'Phone', copy: 'Tweak, test and play from your pocket.' },
+];
+
+// Screen textures for the 3D scene (sRGB webp, sized for the screens they fill).
+const [texTablet, texProjects] = await Promise.all([
+  getImage({ src: editorTablet, format: 'webp', width: 2048, quality: 84 }),
+  getImage({ src: projectsPhone, format: 'webp', width: 1024, quality: 86 }),
+]);
+
+// `sizes` attribute of the device images: viewport-relative when stacked.
+const sizesFor = (stacked: string, side: string) => `${STACKED_QUERY} ${stacked}, ${side}`;
+---
+
+<section id="anywhere" class="showcase" aria-labelledby="anywhere-title" data-showcase data-step="1" data-tex-tablet={texTablet.src} data-tex-projects={texProjects.src}>
+  <script is:inline>
+    // Hide the devices before first paint when the scroll sequence will run.
+    // showcase.ts sets data-ready once it has taken over (and reverts the mode
+    // for reduced motion); if it is blocked, slow or broken, fall back to the
+    // static composition rather than leave the section half-built.
+    (function (root) {
+      if (matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+      root.dataset.mode = 'pinned';
+      setTimeout(function () {
+        if (!root.dataset.ready) delete root.dataset.mode;
+      }, 4000);
+    })(document.currentScript.parentElement);
+  </script>
+
+  <div class="stage" data-stage>
+    <div class="stage__bg" style={bandStyle()} aria-hidden="true"></div>
+    <Grain />
+
+    <div class="text">
+      <h2 id="anywhere-title" class="title">{HEADING}</h2>
+
+      <ul class="steps">
+        {
+          STEPS.map((step) => (
+            <li class="step" data-copy>
+              <span class="step__label">{step.label}</span>
+              <span class="step__copy">{step.copy}</span>
+            </li>
+          ))
+        }
+      </ul>
+
+      <div class="progress" aria-hidden="true">
+        <ol class="progress__list">
+          {STEPS.map((step) => <li>{step.label}</li>)}
+        </ol>
+        <span class="progress__track"><span class="progress__fill" data-progress></span></span>
+      </div>
+    </div>
+
+    <div class="rig" role="img" aria-label="A MacBook Pro and an iPad Pro showing the Haptic editor, and an iPhone showing its Projects screen.">
+      <div class="rig__group" data-group>
+        <Device
+          kind="mac"
+          frame={macFrame}
+          shot={editorTablet}
+          alt="The Haptic editor on a MacBook Pro."
+          frameWidths={[720, 1080, 1446, 1808]}
+          shotWidths={[1180, 1760, 2360]}
+          sizes={sizesFor('108vw', 'min(56.5vw, 904px)')}
+        />
+        <Device
+          kind="ipad"
+          frame={ipadFrame}
+          shot={editorTablet}
+          alt="The Haptic editor on an iPad Pro."
+          frameWidths={[520, 780, 1040, 1400]}
+          shotWidths={[900, 1400, 2360]}
+          sizes={sizesFor('86vw', 'min(32vw, 513px)')}
+        />
+        <Device
+          kind="iphone"
+          frame={iphoneFrame}
+          shot={projectsPhone}
+          alt="The Haptic Projects screen on an iPhone."
+          frameWidths={[240, 480, 720]}
+          shotWidths={[375, 750]}
+          sizes={sizesFor('43vw', 'min(14.5vw, 232px)')}
+        />
+      </div>
+    </div>
+
+    <canvas class="scene" data-scene-canvas aria-hidden="true"></canvas>
+  </div>
+</section>
+
+<script>
+  import { initShowcase } from '../scripts/showcase';
+
+  const showcase = document.querySelector<HTMLElement>('[data-showcase]');
+  if (showcase) initShowcase(showcase);
+</script>
+
+<style>
+  .showcase {
+    /* Composition scale: the mockup's pixel, shrunk if the viewport is short. */
+    --k: min(var(--u), calc(100svh * 0.00127));
+    /* y of the MacBook base inside the pinned screen. */
+    --ay: calc(100svh * 0.66);
+    /* Scale of the backdrop bands (they follow the devices on desktop). */
+    --kb: var(--k);
+    /* Room between the MacBook base and the bottom of the backdrop, which
+       must end on the page colour (see bandStyle). */
+    --tail: calc(100svh - var(--ay));
+    --text-left: max(var(--gutter), calc((100vw - 1600px) / 2 + var(--gutter)));
+
+    position: relative;
+    color: var(--c-text);
+  }
+
+  .stage {
+    position: relative;
+    height: 100svh;
+    overflow: clip;
+    background: var(--c-bg);
+  }
+
+  .stage__bg {
+    position: absolute;
+    inset: 0;
+    z-index: var(--z-bg);
+  }
+
+  /* ---- Copy ---- */
+  .text {
+    position: absolute;
+    z-index: var(--z-content);
+    left: var(--text-left);
+    top: calc(var(--ay) - 401 * var(--k));
+    width: calc(560 * var(--k));
+  }
+
+  .title,
+  .step__copy {
+    font-size: max(18px, calc(32 * var(--k)));
+    font-weight: 500;
+    line-height: 1.25;
+  }
+
+  .title {
+    margin: 0;
+  }
+
+  .steps {
+    margin: calc(24 * var(--k)) 0 0;
+    padding: 0;
+    list-style: none;
+  }
+
+  .step__copy {
+    display: block;
+  }
+
+  /* Static (default): every device's line is listed with its name. */
+  .step + .step {
+    margin-top: calc(18 * var(--k));
+  }
+
+  .step__label {
+    display: block;
+    margin-bottom: calc(2 * var(--k));
+    font-size: max(13px, calc(15 * var(--k)));
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: rgb(255 255 255 / 0.8);
+  }
+
+  .step__copy {
+    font-size: max(16px, calc(24 * var(--k)));
+  }
+
+  .progress {
+    display: none;
+  }
+
+  /* ---- Pinned: one line at a time, crossfaded by the timeline ---- */
+  [data-mode='pinned'] .steps {
+    display: grid;
+  }
+
+  [data-mode='pinned'] .step {
+    grid-area: 1 / 1;
+    margin: 0;
+  }
+
+  /* The timeline reveals the others (the same opacity it starts them at). */
+  [data-mode='pinned'] .step:not(:first-child) {
+    opacity: 0;
+  }
+
+  [data-mode='pinned'] .step__copy {
+    font-size: max(18px, calc(32 * var(--k)));
+  }
+
+  /* The device name stays for screen readers; the progress row shows it. */
+  [data-mode='pinned'] .step__label {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    margin: -1px;
+    overflow: hidden;
+    clip: rect(0 0 0 0);
+    white-space: nowrap;
+  }
+
+  [data-mode='pinned'] .progress {
+    display: block;
+    width: fit-content;
+    margin-top: calc(44 * var(--k));
+  }
+
+  .progress__list {
+    display: flex;
+    margin: 0;
+    padding: 0;
+    list-style: none;
+    font-size: max(14px, calc(16 * var(--k)));
+    letter-spacing: 0.02em;
+    color: rgb(255 255 255 / 0.72);
+  }
+
+  .progress__list li {
+    transition: color 0.35s ease;
+  }
+
+  .progress__list li + li::before {
+    content: '·';
+    margin-inline: 0.7em;
+    color: rgb(255 255 255 / 0.72);
+  }
+
+  [data-step='1'] .progress__list li:nth-child(1),
+  [data-step='2'] .progress__list li:nth-child(2),
+  [data-step='3'] .progress__list li:nth-child(3) {
+    color: var(--c-text);
+  }
+
+  .progress__track {
+    display: block;
+    height: 1px;
+    margin-top: calc(14 * var(--k));
+    background: rgb(255 255 255 / 0.2);
+    overflow: hidden;
+  }
+
+  .progress__fill {
+    display: block;
+    height: 100%;
+    background: var(--c-text);
+    transform-origin: left center;
+    transform: scaleX(0);
+  }
+
+  /* ---- Devices: the MacBook frame is the rig; the others are placed from it ----
+     As in the 3D scene: the iPad stands in the open lower left, below the copy
+     and clear of the MacBook's display, and the iPhone in front of the
+     MacBook's left edge, beside it. */
+  .rig {
+    position: absolute;
+    z-index: var(--z-media);
+    top: calc(var(--ay) - 479 * var(--k));
+    right: calc(-134 * var(--k));
+    width: calc(723 * var(--k));
+    aspect-ratio: 4256 / 2834;
+  }
+
+  /* Only the stacked layout gives the group a box of its own. */
+  .rig__group {
+    display: contents;
+  }
+
+  .rig :global(.device--mac) {
+    inset: 0;
+    width: 100%;
+    z-index: 1;
+  }
+
+  .rig :global(.device--ipad) {
+    left: -61.5%;
+    top: 82%;
+    width: 54%;
+    z-index: 2;
+  }
+
+  .rig :global(.device--iphone) {
+    left: -3.05%;
+    top: 70%;
+    width: 25.65%;
+    z-index: 3;
+  }
+
+  /* The 3D scene: a transparent canvas over the whole stage, above the grain.
+     Hidden until showcase.ts has the scene ready (data-scene="on"), which
+     also hides the 2D devices; the rig keeps its layout either way. */
+  .scene {
+    position: absolute;
+    inset: 0;
+    z-index: var(--z-media);
+    width: 100%;
+    height: 100%;
+    pointer-events: none;
+    visibility: hidden;
+  }
+
+  [data-scene='on'] .scene {
+    visibility: visible;
+  }
+
+  [data-scene='on'] .rig :global(.device) {
+    visibility: hidden;
+  }
+
+  /* Before the scroll script has run, the devices wait out of sight. */
+  [data-mode='pinned'] .rig :global(.device) {
+    opacity: 0;
+    will-change: transform, opacity;
+  }
+
+  /* ---- Not pinned: the section grows with its content ----
+     The text sits in the flow, offset by the stage's padding instead of
+     `top`, so a short viewport (or large type) makes the stage taller
+     instead of clipping the copy. */
+  .showcase:not([data-mode='pinned']) .stage {
+    height: auto;
+    min-height: 100svh;
+    padding-top: calc(var(--ay) - 401 * var(--k));
+  }
+
+  .showcase:not([data-mode='pinned']) .text {
+    position: relative;
+    top: auto;
+    left: auto;
+    margin-left: var(--text-left);
+  }
+
+  /* ---- Tablet portrait and phones: copy on top, the devices stacked below ----
+     Same query as STACKED_QUERY (showcase/layout.ts). The stage becomes a
+     column: the copy, then the rig, which takes the height that is left. The
+     group of devices is sized to that space (container units), so the layout
+     holds for any screen shape and any wrapping of the copy, and it is
+     centred in it. */
+  @media (max-width: 820px) and (max-aspect-ratio: 1/1) {
+    .showcase {
+      /* Scale of the copy's small spacings (the devices have their own, below). */
+      --k: calc(100vw * 0.00138);
+      --kb: calc(100svh / 940);
+      /* Horizon of the backdrop (the MacBook base stands on it), as a share of
+         the stage, which the backdrop covers whatever its height. */
+      --ay: 76%;
+      --tail: calc(100% - var(--ay));
+    }
+
+    .stage {
+      display: flex;
+      flex-direction: column;
+    }
+
+    .text {
+      position: relative;
+      top: auto;
+      left: auto;
+      flex: none;
+      width: auto;
+      margin: calc(clamp(68px, 11svh, 92px) + env(safe-area-inset-top, 0px)) var(--gutter) 0;
+    }
+
+    .title {
+      font-size: clamp(22px, 5.8vw, 38px);
+    }
+
+    .steps {
+      margin-top: 14px;
+    }
+
+    .step__copy,
+    [data-mode='pinned'] .step__copy {
+      font-size: clamp(17px, 4.5vw, 28px);
+    }
+
+    [data-mode='pinned'] .progress {
+      margin-top: 22px;
+    }
+
+    .progress__list {
+      font-size: clamp(14px, 3.6vw, 18px);
+    }
+
+    .rig {
+      position: relative;
+      top: auto;
+      right: auto;
+      flex: 1 1 0;
+      min-height: 0;
+      width: auto;
+      aspect-ratio: auto;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 28px 0 max(24px, env(safe-area-inset-bottom, 0px));
+      container-type: size;
+    }
+
+    /* Sizes are in units of the group's width (the MacBook frame, a little
+       wider than the screen so its base bleeds off both edges); the group is
+       as tall as the three devices together (--gr), measured from the top of
+       the MacBook lid to the bottom of the iPhone. */
+    .rig__group {
+      --rw: min(108vw, calc(100cqh / var(--gr)));
+      --gr: 1.1;
+      /* The group is centred first on the MacBook alone, then on the MacBook
+         and iPad, and settles upwards as they join (showcase.ts): half of
+         the height the missing devices add, in percent of the group's. */
+      --settle-mac: 22.5;
+      --settle-ipad: 4.5;
+      --k: calc(var(--rw) / 723);
+      /* How far the group runs past each screen edge, and the inset from the
+         group's ends that keeps the devices on screen (0 when it all fits). */
+      --bleed: max(0px, calc((var(--rw) - 100vw) / 2));
+      --edge: min(calc(var(--bleed) + 10px), calc(var(--bleed) * 3));
+
+      display: block;
+      position: relative;
+      flex: none;
+      width: var(--rw);
+      height: calc(var(--rw) * var(--gr));
+    }
+
+    .rig :global(.device--mac) {
+      inset: auto;
+      left: 0;
+      top: calc(var(--rw) * -0.0573);
+    }
+
+    /* The iPad and iPhone reach the ends of the MacBook base (0.3% and -0.67%
+       are its ends, allowing for their transparent margins), so no stub of
+       the base sticks out beside them, but stay 10px inside the screen edge
+       when the group runs past it (--edge). */
+    .rig :global(.device--ipad) {
+      left: calc(var(--edge) + 0.3%);
+      top: calc(var(--rw) * 0.4585);
+      width: 76%;
+    }
+
+    .rig :global(.device--iphone) {
+      left: auto;
+      right: calc(var(--edge) - 0.67%);
+      top: calc(var(--rw) * 0.3668);
+      width: 37%;
+    }
+
+    /* Not pinned: copy, then the devices in the flow below it. */
+    .showcase:not([data-mode='pinned']) .stage {
+      padding-top: 0;
+    }
+
+    .showcase:not([data-mode='pinned']) .text {
+      margin-left: var(--gutter);
+    }
+
+    .showcase:not([data-mode='pinned']) .rig {
+      flex: none;
+      padding: 28px 0 max(40px, env(safe-area-inset-bottom, 0px));
+      container-type: normal;
+    }
+
+    .showcase:not([data-mode='pinned']) .rig__group {
+      --rw: min(108vw, 70svh);
+    }
+  }
+</style>

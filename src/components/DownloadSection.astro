@@ -1,0 +1,390 @@
+---
+/**
+ * Download section: an OS-aware primary button, a Haptic Pro note, the
+ * pricing line and a row of every other platform.
+ *
+ * Server-rendered default (also what no-JS visitors get): the three desktop
+ * buttons, with the mobile stores in the "Other platforms" row. platform.ts
+ * promotes the visitor's own platform; the reserved heights keep the swap from
+ * moving the layout. The mobile stores always show their official badge.
+ *
+ * Desktop measurements are mockup pixels: calc(N * var(--u)); the smallest
+ * text and tap targets are floored at their phone sizes with max().
+ */
+import Grain from './Grain.astro';
+import DownloadButton from './download/DownloadButton.astro';
+import PlatformIcon from './download/PlatformIcon.astro';
+import StoreBadge from './download/StoreBadge.astro';
+import { PLATFORMS, PRICING_HREF } from '../data/downloads';
+import { withBase } from '../lib/paths';
+
+const TITLE = 'Get Haptic';
+const LEAD = 'Build from anywhere, anytime.';
+---
+
+<section id="download" class="download" data-download data-platform="any" aria-labelledby="download-title">
+  <div class="backdrop" aria-hidden="true"><div class="glow" data-reveal-glow></div></div>
+  <Grain />
+
+  <div class="inner">
+    <h2 id="download-title" class="title" data-reveal>{TITLE}</h2>
+    <p class="lead" data-reveal>{LEAD}</p>
+
+    <div class="slot" data-reveal>
+      {PLATFORMS.map((platform) => <DownloadButton platform={platform} hidden={platform.group === 'mobile'} />)}
+    </div>
+
+    <div class="meta" data-reveal>
+      <div class="notes">
+        <p class="note" data-note="desktop" data-active="true">
+          Desktop is free. iPhone, iPad and Android require <span class="pro">Haptic Pro</span>.
+        </p>
+        <p class="note" data-note="mobile" data-active="false">
+          iPhone, iPad and Android require <span class="pro">Haptic Pro</span>. Desktop is free.
+        </p>
+      </div>
+      <p class="pricing">View <a href={withBase(PRICING_HREF)}>Pricing</a> for more details.</p>
+    </div>
+
+    <div class="others" data-reveal>
+      <p class="others__label" id="download-others">Other platforms</p>
+      <ul class="others__list" aria-labelledby="download-others">
+        {
+          PLATFORMS.map((platform) => (
+            <li data-secondary data-platform-id={platform.id} hidden={platform.group === 'desktop'}>
+              {platform.store ? (
+                <a class="store" href={platform.href}>
+                  <StoreBadge store={platform.store} alt={`${platform.lead} ${platform.name}`} />
+                </a>
+              ) : (
+                <a class="chip" href={platform.href}>
+                  <span class="chip__icon">{platform.icon && <PlatformIcon name={platform.icon} />}</span>
+                  {platform.short}
+                </a>
+              )}
+            </li>
+          ))
+        }
+      </ul>
+    </div>
+  </div>
+</section>
+
+<script>
+  import { initPlatformPicker } from '../scripts/platform';
+
+  const root = document.querySelector<HTMLElement>('[data-download]');
+  if (root) {
+    // Platform detection must not wait on (or fail with) the GSAP chunk.
+    initPlatformPicker(root);
+
+    if (!window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+      import('../scripts/motion')
+        .then(({ gsap }) => {
+          const glow = root.querySelector('[data-reveal-glow]');
+          const items = root.querySelectorAll('[data-reveal]');
+          gsap
+            .timeline({
+              defaults: { ease: 'power3.out' },
+              scrollTrigger: { trigger: root, start: 'top 65%', once: true },
+            })
+            .from(glow, { opacity: 0, scale: 0.9, duration: 1.6 }, 0)
+            .from(items, { opacity: 0, y: 28, duration: 0.9, stagger: 0.09 }, 0.1);
+        })
+        .catch(() => {});
+    }
+  }
+</script>
+
+<style>
+  .download {
+    position: relative;
+    isolation: isolate;
+    overflow: clip;
+    padding: calc(124 * var(--u)) var(--gutter) calc(150 * var(--u));
+    background: var(--c-bg);
+  }
+
+  .backdrop {
+    position: absolute;
+    inset: 0;
+    z-index: var(--z-bg);
+    pointer-events: none;
+  }
+
+  /* A faint, hero-coloured bloom behind the button. */
+  .glow {
+    position: absolute;
+    left: 50%;
+    top: calc(460 * var(--u));
+    width: calc(1400 * var(--u));
+    height: calc(900 * var(--u));
+    translate: -50% -50%;
+    /* Radii stay within the box (50% / 50%) so the bloom fades out before its edges. */
+    background:
+      radial-gradient(ellipse 30% 26% at 50% 46%, rgb(255 110 28 / 0.34), transparent),
+      radial-gradient(ellipse 42% 36% at 50% 52%, rgb(196 44 100 / 0.3), transparent),
+      radial-gradient(ellipse 50% 46% at 50% 52%, rgb(104 52 168 / 0.22), transparent);
+  }
+
+  .inner {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
+  }
+
+  /* Section heading: plain Onest Bold, white (deliberately not the logo/title style: no Block Berthold, no fringes). */
+  .title {
+    position: relative;
+    z-index: var(--z-content);
+    margin: 0;
+    font-family: var(--font-sans);
+    font-size: calc(72 * var(--u));
+    font-weight: 700;
+    line-height: 1.05;
+    letter-spacing: -0.028em;
+    white-space: nowrap;
+  }
+
+  .lead {
+    position: relative;
+    z-index: var(--z-content);
+    margin: calc(26 * var(--u)) 0 0;
+    font-family: var(--font-serif);
+    font-size: calc(32 * var(--u));
+    font-weight: 400;
+    line-height: 1.2;
+    text-wrap: balance;
+  }
+
+  /* Reserves the height of the tallest primary (the 84px desktop button); a 56px store badge sits centred in it. */
+  .slot {
+    position: relative;
+    z-index: var(--z-media);
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: center;
+    gap: calc(28 * var(--u));
+    min-height: max(56px, calc(84 * var(--u)));
+    margin-top: calc(68 * var(--u));
+  }
+
+  .meta {
+    position: relative;
+    z-index: var(--z-content);
+    margin-top: calc(32 * var(--u));
+  }
+
+  /* Both notes share one grid cell, so the block is as tall as the longer and never reflows. */
+  .notes {
+    display: grid;
+    justify-items: center;
+    font-size: max(17px, calc(20 * var(--u)));
+    line-height: 1.45;
+    color: var(--c-text-muted);
+  }
+
+  .note {
+    grid-area: 1 / 1;
+    max-width: max(340px, calc(800 * var(--u)));
+    margin: 0;
+    text-wrap: balance;
+  }
+
+  .note[data-active='false'] {
+    visibility: hidden;
+  }
+
+  .pro {
+    color: var(--c-text);
+    font-weight: 600;
+  }
+
+  .pricing {
+    margin: calc(10 * var(--u)) 0 0;
+    font-size: max(20px, calc(24 * var(--u)));
+    line-height: 1.4;
+    color: var(--c-text-muted);
+    text-wrap: balance;
+  }
+
+  .pricing a {
+    color: var(--c-text);
+    font-weight: 700;
+    background: linear-gradient(90deg, var(--c-amber), var(--c-red)) 0 100% / 100% calc(2 * var(--u)) no-repeat;
+    padding-bottom: calc(2 * var(--u));
+    transition: background-size 0.3s var(--ease-out);
+  }
+
+  .pricing a:hover {
+    background-size: 100% calc(5 * var(--u));
+  }
+
+  .others {
+    --chip-h: max(48px, calc(48 * var(--u)));
+    /* Store badges: 40px is the smallest on-screen height; the gap keeps the 1/4-height clear space. */
+    --badge-h: max(40px, calc(40 * var(--u)));
+    --row-gap: max(12px, calc(12 * var(--u)));
+    position: relative;
+    z-index: var(--z-media);
+    width: min(100%, max(calc(900 * var(--u)), 600px));
+    margin-top: calc(88 * var(--u));
+    padding-top: calc(36 * var(--u));
+    border-top: 1px solid var(--c-panel-line);
+  }
+
+  .others__label {
+    margin: 0;
+    font-size: max(16px, calc(18 * var(--u)));
+    color: var(--c-text-muted);
+  }
+
+  .others__list {
+    display: flex;
+    flex-wrap: wrap;
+    align-content: flex-start;
+    justify-content: center;
+    gap: var(--row-gap);
+    min-height: var(--chip-h);
+    margin: calc(20 * var(--u)) 0 0;
+    padding: 0;
+    list-style: none;
+  }
+
+  .others__list > li {
+    display: flex;
+    align-items: center;
+    min-height: var(--chip-h);
+  }
+
+  .others__list > [hidden] {
+    display: none;
+  }
+
+  .chip {
+    position: relative;
+    display: inline-flex;
+    align-items: center;
+    gap: calc(10 * var(--u));
+    height: var(--chip-h);
+    padding: 0 calc(20 * var(--u)) 0 calc(16 * var(--u));
+    border: 1px solid rgb(255 255 255 / 0.16);
+    border-radius: calc(14 * var(--u));
+    background: rgb(255 255 255 / 0.04);
+    font-size: max(16px, calc(18 * var(--u)));
+    white-space: nowrap;
+    transition:
+      background-color 0.25s,
+      border-color 0.25s;
+  }
+
+  .chip:hover {
+    background: rgb(255 255 255 / 0.1);
+    border-color: rgb(255 179 0 / 0.55);
+  }
+
+  .chip:focus-visible {
+    border-radius: calc(14 * var(--u));
+  }
+
+  .chip__icon {
+    display: grid;
+    font-size: calc(20 * var(--u));
+  }
+
+  /* The badge is unaltered artwork; the link only supplies size, focus ring and the hover lift. */
+  .store {
+    display: inline-flex;
+    border-radius: calc(var(--badge-h) * 0.15);
+    transition: transform 0.35s var(--ease-out);
+  }
+
+  .store:hover {
+    transform: translateY(calc(-2 * var(--u)));
+  }
+
+  .store:focus-visible {
+    border-radius: calc(var(--badge-h) * 0.15);
+  }
+
+  /* The longest row (any four of the five platforms) is about 525px wide. The list is at least 600px wide from 650px up,
+     so only narrower screens can wrap it; reserve two rows there so the swap never moves the page. */
+  @media (max-width: 700px) {
+    .others__list {
+      min-height: calc(var(--chip-h) * 2 + var(--row-gap));
+    }
+  }
+
+  @media (max-width: 820px) {
+    .download {
+      padding: 92px var(--gutter) 88px;
+    }
+
+    .glow {
+      top: 360px;
+      width: 760px;
+      height: 620px;
+    }
+
+    .title {
+      font-size: clamp(42px, 12.6vw, 68px);
+    }
+
+    .lead {
+      margin-top: 16px;
+      font-size: clamp(22px, 5.6vw, 30px);
+    }
+
+    .slot {
+      width: 100%;
+      min-height: 76px;
+      margin-top: 44px;
+      gap: 10px;
+    }
+
+    .meta {
+      margin-top: 26px;
+    }
+
+    .pricing {
+      margin-top: 8px;
+    }
+
+    .pricing a {
+      padding-bottom: 2px;
+      background-size: 100% 2px;
+    }
+
+    .others {
+      margin-top: 56px;
+      padding-top: 28px;
+    }
+
+    .others__list {
+      margin-top: 16px;
+    }
+
+    .chip {
+      gap: 7px;
+      padding: 0 14px 0 12px;
+      border-radius: 14px;
+    }
+
+    .chip:focus-visible {
+      border-radius: 14px;
+    }
+
+    .chip__icon {
+      font-size: 19px;
+    }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .store:hover {
+      transform: none;
+    }
+  }
+</style>

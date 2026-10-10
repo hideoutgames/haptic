@@ -1,0 +1,39 @@
+---
+/**
+ * The stores' official badge artwork, unaltered: no recolouring, effects or
+ * corner changes (Apple and Google brand rules). Size it by setting
+ * `--badge-h` on a parent; the width follows from the artwork's own ratio.
+ * Both files are trimmed to the badge edge, so equal heights give the equal
+ * visual weight the guidelines ask for.
+ *
+ * The Google PNG is re-encoded at a few widths as PNG (lossless) rather than
+ * converted to a lossy format.
+ */
+import { Image } from 'astro:assets';
+import appStore from '../../assets/badges/app-store-badge-black.svg';
+import googlePlay from '../../assets/badges/google-play-badge.png';
+import type { StoreId } from '../../data/downloads';
+
+interface Props {
+  store: StoreId;
+  alt: string;
+}
+
+const { store, alt } = Astro.props;
+
+// The SVG scales as is; the PNG gets a lossless srcset sized for ~240px at 1x to 3x.
+const art =
+  store === 'appstore'
+    ? { src: appStore }
+    : { src: googlePlay, widths: [270, 540, 811], sizes: '240px', format: 'png' as const };
+---
+
+<Image class="badge" alt={alt} {...art} />
+
+<style>
+  .badge {
+    display: block;
+    width: auto;
+    height: var(--badge-h, 40px);
+  }
+</style>
