@@ -49,7 +49,7 @@ export interface MacBook {
   textures: Texture[];
 }
 
-export function createMacBook(m: Materials, screen: Texture, tabletSize: { w: number; h: number }): MacBook {
+export function createMacBook(m: Materials, screen: Texture, tabletSize: { w: number; h: number }, lite = false): MacBook {
   const group = new Group();
   const { width: W, depth: D } = MAC;
 
@@ -91,7 +91,7 @@ export function createMacBook(m: Materials, screen: Texture, tabletSize: { w: nu
   };
 
   // Keyboard well, keys and legends.
-  const keyboard = createKeyboard(m.keycap);
+  const keyboard = createKeyboard(m.keycap, lite);
   const kbBackZ = -D / 2 + 13;
   const wellW = keyboard.width + 11;
   const wellD = keyboard.depth + 10;
@@ -117,27 +117,29 @@ export function createMacBook(m: Materials, screen: Texture, tabletSize: { w: nu
   barrel.position.set(0, 1.5, -D / 2 + 3.4);
   deck.add(barrel);
 
-  // Speaker grilles on both sides of the keyboard.
-  const holeGeo = new CircleGeometry(0.5, 8);
-  const cols = 6;
-  const rows = 42;
-  const grille = new InstancedMesh(holeGeo, m.blackMatte, cols * rows * 2);
-  const mm = new Matrix4();
-  let gi = 0;
-  const gx = wellW / 2 + 5.5;
-  for (const side of [-1, 1]) {
-    for (let r = 0; r < rows; r++) {
-      for (let c = 0; c < cols; c++) {
-        const x = side * (gx + c * 2.1 + (r % 2) * 1.05);
-        const z = kbBackZ + 6 + r * 2.35;
-        mm.makeRotationX(-Math.PI / 2);
-        mm.setPosition(x, 0.06, z);
-        grille.setMatrixAt(gi++, mm);
+  // Speaker grilles on both sides of the keyboard (left out when rendering in software).
+  if (!lite) {
+    const holeGeo = new CircleGeometry(0.5, 8);
+    const cols = 6;
+    const rows = 42;
+    const grille = new InstancedMesh(holeGeo, m.blackMatte, cols * rows * 2);
+    const mm = new Matrix4();
+    let gi = 0;
+    const gx = wellW / 2 + 5.5;
+    for (const side of [-1, 1]) {
+      for (let r = 0; r < rows; r++) {
+        for (let c = 0; c < cols; c++) {
+          const x = side * (gx + c * 2.1 + (r % 2) * 1.05);
+          const z = kbBackZ + 6 + r * 2.35;
+          mm.makeRotationX(-Math.PI / 2);
+          mm.setPosition(x, 0.06, z);
+          grille.setMatrixAt(gi++, mm);
+        }
       }
     }
+    grille.instanceMatrix.needsUpdate = true;
+    deck.add(grille);
   }
-  grille.instanceMatrix.needsUpdate = true;
-  deck.add(grille);
 
   // ---- Lid (upright frame: x right, y up the lid, z out of the screen) ----
   const lid = new Group();

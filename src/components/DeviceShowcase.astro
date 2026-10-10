@@ -12,10 +12,12 @@
  * again so the page never stays half-built.
  *
  * The devices are 3D models drawn on a canvas (components/showcase/scene,
- * loaded lazily) when WebGL2 is available: showcase.ts then sets
+ * loaded lazily) when WebGL2 is available, on a real GPU or a software
+ * renderer (which gets a cheaper configuration): showcase.ts then sets
  * `data-scene="on"`, which shows the canvas and hides the 2D rig below
  * (visibility only, so nothing moves). The 2D rig stays as the default and
- * the fallback, and its texture URLs for the 3D screens come from here.
+ * the fallback (also if the scene turns out too slow to use, or with
+ * `?no3d`), and its texture URLs for the 3D screens come from here.
  *
  * Measurements are mockup pixels written as calc(N * var(--k)), where --k is
  * --u capped by the viewport height so the composition always fits the pinned

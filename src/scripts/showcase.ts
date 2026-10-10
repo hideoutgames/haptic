@@ -1,80 +1,106 @@
 /**
- * Scroll sequence for the device showcase.
+ * Scroll sequence for the device showcase: a slow, calm product film, one idea
+ * per beat, each followed by a hold in which nothing moves while the copy is
+ * read. In units of screen heights of scroll (the table under `T`):
  *
- *  1. As the section scrolls into view, the MacBook rises and settles.
- *  2. The section pins. Scrolling opens the MacBook, then brings in the iPad,
- *     then the iPhone (which turns round from its back and opens a project: its
- *     Projects screen fades into the editor); the copy and the step indicator
- *     follow.
+ *   before the pin  the MacBook arrives with the scrolling page, shut, and
+ *                    turns gently from three-quarter view to face front
+ *   0.08 – 1.28      the lid opens; the display lights once it is past 70 degrees
+ *   1.41 – 1.91      hold: "Mac"
+ *   1.91 – 2.76      the iPad glides in from the right on a shallow arc
+ *   2.76 – 3.26      hold: "iPad"
+ *   3.26 – 3.81      the iPhone rises into place, back to the viewer
+ *   3.66 – 4.96      it turns slowly to face front, showing Projects
+ *   4.81 – 5.26      Projects cross-fades to the editor
+ *   5.26 – 5.96      final hold, then the pin releases
  *
- * Everything is scrubbed, so scrolling back plays it in reverse.
+ * Everything is eased with sine / power2 in-outs (no overshoot), scrubbed with
+ * a long catch-up, and played in reverse when scrolling back. The camera
+ * dollies in a few per cent over the whole pin.
  *
  * Two renderers share one timeline. The default is the 2D rig of the page (the
  * device-frame pictures, moved with xPercent/yPercent so the same timeline
  * serves every layout). When WebGL2 is available, the 3D scene
  * (components/showcase/scene, loaded lazily) replaces it: the same timeline
  * scrubs the scene's state object, and the 2D rig stays in the page, hidden,
- * as the fallback if the context is lost. Without JS, with reduced motion, or
- * if the scene fails to start, the 2D composition stays. (The stacked layout
- * also lifts the 2D group as the devices join, to keep it centred under the
- * copy; the CSS says by how much.)
+ * as the fallback if the context is lost or the scene turns out too slow to
+ * use (a software renderer on a weak machine). Without JS, with reduced
+ * motion, or if the scene fails to start, the 2D composition stays. (The
+ * stacked layout also lifts the 2D group as the devices join, to keep it
+ * centred under the copy; the CSS says by how much.)
  *
  * There is a single matchMedia context on purpose. Reverting and rebuilding
  * the pin when the layout changes (rotation, resize, zoom) would reset the
  * scroll position to the top, so the layout-dependent pin length is read on
  * every refresh instead.
+ *
+ * Query flags for testing: `?no3d` keeps the 2D rig, `?force3d` never gives
+ * up on the 3D scene (no safety net), `?quality=high|lite` forces a quality
+ * tier, `?debug3d` exposes the scene as window.__haptic3d.
  */
+import { probeGPU } from '../components/showcase/gpu';
 import { STACKED_QUERY } from '../components/showcase/layout';
-import { initialState, type SceneState, type ShowcaseScene } from '../components/showcase/scene/types';
+import {
+  initialState,
+  LID_OPEN_ANGLE,
+  SCREEN_ON_ANGLE,
+  type Quality,
+  type SceneState,
+  type ShowcaseScene,
+} from '../components/showcase/scene/types';
 import { getLenis, gsap, initSmoothScroll, ScrollTrigger } from './motion';
 import { track } from './preload';
 
 /** Pin length as a multiple of the screen height. */
-const PIN_SCREENS = { side: 3, stacked: 2.6 };
+const PIN_SCREENS = { side: 5.96, stacked: 5.2 };
 
-/** Timeline units; labels double as the step thresholds for the indicator. */
+/**
+ * The pinned timeline, in units of the side layout's pin length divided by its
+ * screen height (1 unit = one screen of scroll there; the stacked layout is
+ * the same film, a little shorter). Labels double as the step thresholds.
+ */
 const T = {
-  open: 0.0,
-  openDur: 2.6,
-  ipad: 2.5,
-  ipadDur: 2.8,
-  phone: 5.5,
-  phoneDur: 2.4,
-  flipDur: 2.9,
-  editor: 7.9,
-  editorDur: 1.3,
-  end: 9.8,
+  /** The lid opens slowly, the display lights as it passes SCREEN_ON_ANGLE. */
+  open: 0.08,
+  openDur: 1.2,
+  screenDur: 0.6,
+  /** The iPad glides in. */
+  ipad: 1.91,
+  ipadDur: 0.85,
+  /** The iPhone rises, then turns from its back to its front. */
+  phone: 3.26,
+  phoneDur: 0.55,
+  flip: 3.66,
+  flipDur: 1.3,
+  /** Projects cross-fades to the editor, starting in the tail of the turn. */
+  editor: 4.81,
+  editorDur: 0.45,
+  /** End of the pin: everything is held from the last move to here. */
+  end: 5.96,
 };
 
-/**
- * The copy and the indicator change when the next device is about to be seen,
- * not before: this long after it starts moving (timeline units), when it
- * reaches the edge of the frame.
- */
-const STEP_LEAD = 0.7;
+/** How long a line of copy takes to fade out (and, after it, in). */
+const COPY_FADE = 0.4;
 
 /**
- * `?debug3d` / `?force3d`: accept a software renderer (headless screenshots,
- * debugging). Everyone else on one is kept on the 2D rig, see hasWebGL2.
+ * The copy and the indicator change when the next device is well on its way,
+ * not before: the old line is gone by the time `copySwap` says (the device is
+ * about 60 per cent in place, and on screen), then the new line fades in.
  */
-const allowSoftwareGL = (): boolean => /[?&](debug3d|force3d)\b/.test(location.search);
+const copySwap = {
+  ipad: T.ipad + T.ipadDur * 0.57,
+  phone: T.phone + T.phoneDur * 0.8,
+};
 
-/**
- * WebGL2 is required by the 3D scene; probed on a throwaway canvas. A software
- * renderer (blocklisted GPU, VM, remote desktop) counts as unavailable: it
- * would stall the page for seconds, and the 2D rig is a good fallback.
- */
-function hasWebGL2(): boolean {
-  try {
-    const probe = document.createElement('canvas');
-    const gl = probe.getContext('webgl2', { failIfMajorPerformanceCaveat: !allowSoftwareGL() });
-    if (!gl) return false;
-    gl.getExtension('WEBGL_lose_context')?.loseContext();
-    return true;
-  } catch {
-    return false;
-  }
-}
+/** Where the lid is at SCREEN_ON_ANGLE on a sine.inOut ease: the display lights up from here. */
+const lidAtScreenOn = Math.acos(1 - (2 * SCREEN_ON_ANGLE) / LID_OPEN_ANGLE) / Math.PI;
+
+/** The scene's drawing buffer may be asked about only in these query forms. */
+const query = new URLSearchParams(location.search);
+const qualityParam = (): Quality => {
+  const q = query.get('quality');
+  return q === 'high' || q === 'lite' ? q : 'auto';
+};
 
 /** How long the scene may take to start before the 2D rig is kept. */
 const SCENE_TIMEOUT = 20000;
@@ -110,43 +136,26 @@ export function initShowcase(root: HTMLElement): void {
     let scene: ShowcaseScene | null = null;
     let cancelled = false;
     const cleanups: Array<() => void> = [];
-    const invalidate = () => scene?.invalidate();
 
     // Copy that is not the current step waits below its slot.
-    gsap.set(copy.slice(1), { opacity: 0, yPercent: 30 });
+    gsap.set(copy.slice(1), { opacity: 0, yPercent: 20 });
 
-    // 1. The MacBook rises into place while the section scrolls in.
-    gsap.fromTo(
+    // 1. Before the pin, as the section scrolls into view: the MacBook rises
+    // (shut, three-quarter view) and turns to face front. Ends as the pin starts.
+    const enter = gsap.timeline({
+      defaults: { ease: 'sine.inOut' },
+      scrollTrigger: { trigger: root, start: 'top 45%', end: 'top top', scrub: 1.3 },
+    });
+    enter.fromTo(
       mac,
-      {
-        opacity: 0,
-        yPercent: 16,
-        scale: 0.9,
-        rotationX: 20,
-        transformPerspective: 1800,
-        transformOrigin: '50% 100%',
-      },
-      {
-        opacity: 1,
-        yPercent: 0,
-        scale: 1,
-        rotationX: 0,
-        ease: 'power2.out',
-        scrollTrigger: { trigger: root, start: 'top 95%', end: 'top top', scrub: 0.8 },
-      },
+      { opacity: 0, yPercent: 16, scale: 0.92, rotationX: 14, transformPerspective: 1800, transformOrigin: '50% 100%' },
+      { opacity: 1, yPercent: 0, scale: 1, rotationX: 0, duration: 1 },
+      0,
     );
-    gsap.fromTo(
-      S,
-      { rise: 0 },
-      {
-        rise: 1,
-        ease: 'power2.out',
-        onUpdate: invalidate,
-        scrollTrigger: { trigger: root, start: 'top 95%', end: 'top top', scrub: 0.8 },
-      },
-    );
+    enter.fromTo(S, { rise: 0 }, { rise: 1, duration: 1 }, 0);
+    enter.fromTo(S, { turn: 0 }, { turn: 1, duration: 1 }, 0);
 
-    // 2. Pinned: the MacBook opens, then the iPad, then the iPhone.
+    // 2. Pinned: the lid opens, the iPad glides in, the iPhone rises and turns.
     //
     // The default pin switches the stage to position: fixed, which Chromium
     // reports as a layout shift of about 1 each time the pin starts and ends
@@ -158,8 +167,7 @@ export function initShowcase(root: HTMLElement): void {
     // initSmoothScroll is idempotent, and asking for it here settles the question.
     const smoothScrolled = !!(getLenis() ?? initSmoothScroll()) && !matchMedia('(any-pointer: coarse)').matches;
     const tl = gsap.timeline({
-      defaults: { ease: 'power2.inOut' },
-      onUpdate: invalidate,
+      defaults: { ease: 'sine.inOut' },
       scrollTrigger: {
         trigger: root,
         start: 'top top',
@@ -169,61 +177,75 @@ export function initShowcase(root: HTMLElement): void {
         },
         pin: stage,
         pinType: smoothScrolled ? 'transform' : 'fixed',
-        scrub: 0.8,
+        // A long catch-up: the film glides after the scroll instead of following it.
+        scrub: 1.3,
         invalidateOnRefresh: true,
-        onUpdate: ({ progress }) => {
-          const t = progress * T.end;
-          root.dataset.step = t >= T.phone ? '3' : t >= T.ipad + STEP_LEAD ? '2' : '1';
-        },
+      },
+      // The step follows the scrubbed timeline (not the raw scroll position), so
+      // the indicator changes with the copy.
+      onUpdate: () => {
+        const t = tl.time();
+        const step = t >= copySwap.phone ? '3' : t >= copySwap.ipad ? '2' : '1';
+        if (root.dataset.step !== step) root.dataset.step = step;
       },
     });
 
-    tl.fromTo(fill, { scaleX: 0 }, { scaleX: 1, ease: 'none', duration: T.end }, 0);
+    // Progress: a third of the bar per step, switching with the copy.
+    tl.fromTo(fill, { scaleX: 0 }, { scaleX: 1 / 3, ease: 'none', duration: copySwap.ipad }, 0);
+    tl.to(fill, { scaleX: 2 / 3, ease: 'none', duration: copySwap.phone - copySwap.ipad }, copySwap.ipad);
+    tl.to(fill, { scaleX: 1, ease: 'none', duration: T.end - copySwap.phone }, copySwap.phone);
 
-    // 3D: the lid opens while the MacBook turns to face the viewer, and the
-    // display lights up as it opens.
-    tl.fromTo(S, { open: 0 }, { open: 1, duration: T.openDur, ease: 'power2.inOut' }, T.open);
-    tl.fromTo(S, { turn: 0 }, { turn: 1, duration: T.openDur * 1.1, ease: 'power2.inOut' }, T.open);
-    tl.fromTo(S, { screen: 0 }, { screen: 1, duration: 1.5, ease: 'power1.inOut' }, T.open + 0.9);
+    // Camera: a very slow dolly-in over the whole pin, for depth.
+    tl.fromTo(S, { dolly: 0 }, { dolly: 1, ease: 'sine.inOut', duration: T.end }, 0);
 
-    // iPad slides in from the lower right and settles over the MacBook.
+    // The lid opens slowly; the display fades on once it is past SCREEN_ON_ANGLE.
+    tl.fromTo(S, { open: 0 }, { open: 1, duration: T.openDur }, T.open);
+    tl.fromTo(S, { screen: 0 }, { screen: 1, duration: T.screenDur }, T.open + T.openDur * lidAtScreenOn);
+
+    // The iPad glides in from the right on a shallow arc and settles over the MacBook.
     tl.fromTo(
       ipad,
-      { opacity: 0, xPercent: 36, yPercent: 24, scale: 0.92, rotationY: -16, transformPerspective: 1800 },
-      { opacity: 1, xPercent: 0, yPercent: 0, scale: 1, rotationY: 0, duration: T.ipadDur, ease: 'power3.out' },
+      { xPercent: 36, yPercent: 24, scale: 0.92, rotationY: -16, transformPerspective: 1800 },
+      { xPercent: 0, yPercent: 0, scale: 1, rotationY: 0, duration: T.ipadDur },
       T.ipad,
     );
-    tl.fromTo(S, { ipad: 0 }, { ipad: 1, duration: T.ipadDur, ease: 'power2.inOut' }, T.ipad);
+    tl.fromTo(ipad, { opacity: 0 }, { opacity: 1, duration: T.ipadDur * 0.4 }, T.ipad);
+    tl.fromTo(S, { ipad: 0 }, { ipad: 1, duration: T.ipadDur }, T.ipad);
     // Stacked layout: the group of devices (centred under the copy) follows
     // as they join. The CSS holds the offsets; on desktop they are 0.
     const settle = (name: string) => parseFloat(getComputedStyle(group).getPropertyValue(name)) || 0;
     tl.fromTo(
       group,
       { yPercent: () => settle('--settle-mac') },
-      { yPercent: () => settle('--settle-ipad'), duration: T.ipadDur, ease: 'power3.out' },
+      { yPercent: () => settle('--settle-ipad'), duration: T.ipadDur },
       T.ipad,
     );
-    tl.to(copy[0], { opacity: 0, yPercent: -30, duration: 0.7 }, T.ipad + STEP_LEAD - 0.3);
-    tl.to(copy[1], { opacity: 1, yPercent: 0, duration: 0.7 }, T.ipad + STEP_LEAD);
 
-    // iPhone pops in front (3D: rises and turns from its back to its front).
+    // The iPhone rises into place (3D: back to the viewer), then turns to its front.
     tl.fromTo(
       iphone,
-      { opacity: 0, xPercent: -6, yPercent: 16, scale: 0.6 },
-      { opacity: 1, xPercent: 0, yPercent: 0, scale: 1, duration: T.phoneDur, ease: 'back.out(1.5)' },
+      { xPercent: -6, yPercent: 16, scale: 0.7 },
+      { xPercent: 0, yPercent: 0, scale: 1, duration: T.phoneDur },
       T.phone,
     );
-    tl.fromTo(S, { phone: 0 }, { phone: 1, duration: T.phoneDur, ease: 'power3.out' }, T.phone);
-    tl.fromTo(S, { flip: 0 }, { flip: 1, duration: T.flipDur, ease: 'power2.inOut' }, T.phone + 0.15);
-    tl.to(group, { yPercent: 0, duration: T.phoneDur, ease: 'power2.out' }, T.phone);
-    tl.to(copy[1], { opacity: 0, yPercent: -30, duration: 0.7 }, T.phone);
-    tl.to(copy[2], { opacity: 1, yPercent: 0, duration: 0.7 }, T.phone + 0.35);
+    tl.fromTo(iphone, { opacity: 0 }, { opacity: 1, duration: T.phoneDur * 0.45 }, T.phone);
+    tl.fromTo(S, { phone: 0 }, { phone: 1, duration: T.phoneDur }, T.phone);
+    tl.fromTo(S, { flip: 0 }, { flip: 1, duration: T.flipDur }, T.flip);
+    tl.to(group, { yPercent: 0, duration: T.phoneDur }, T.phone);
 
     // It arrives on the Projects screen, then opens the project.
     if (projects) {
-      tl.fromTo(projects, { opacity: 1 }, { opacity: 0, duration: T.editorDur, ease: 'power1.inOut' }, T.editor);
+      tl.fromTo(projects, { opacity: 1 }, { opacity: 0, duration: T.editorDur }, T.editor);
     }
-    tl.fromTo(S, { phoneEditor: 0 }, { phoneEditor: 1, duration: T.editorDur, ease: 'power1.inOut' }, T.editor);
+    tl.fromTo(S, { phoneEditor: 0 }, { phoneEditor: 1, duration: T.editorDur }, T.editor);
+
+    // Copy: the old line is gone completely before the next one fades in.
+    const swap = (from: HTMLElement, to: HTMLElement, at: number) => {
+      tl.to(from, { opacity: 0, yPercent: -20, duration: COPY_FADE }, at - COPY_FADE);
+      tl.to(to, { opacity: 1, yPercent: 0, duration: COPY_FADE }, at);
+    };
+    swap(copy[0], copy[1], copySwap.ipad);
+    swap(copy[1], copy[2], copySwap.phone);
 
     // Hold the finished composition for the last stretch of the pin.
     tl.set({}, {}, T.end);
@@ -235,8 +257,13 @@ export function initShowcase(root: HTMLElement): void {
       window.scrollTo(0, scrollY);
     }
 
+    // `?debug3d`: the state, the timelines and (once it exists) the scene, for tests.
+    const debug = query.has('debug3d') ? { scene: null as ShowcaseScene | null, state: S, timeline: tl, enter, gsap } : null;
+    if (debug) (window as unknown as { __haptic3d?: unknown }).__haptic3d = debug;
+
     // ---- 3D scene ----
-    if (canvas && rig && hasWebGL2()) {
+    const gpu = canvas && rig && !query.has('no3d') ? probeGPU() : null;
+    if (canvas && rig && gpu?.webgl2) {
       const startScene = async (report: (p: number) => void): Promise<void> => {
         const urls = {
           tablet: root.dataset.texTablet ?? '',
@@ -284,13 +311,27 @@ export function initShowcase(root: HTMLElement): void {
           };
         };
 
+        // Gives the 3D scene up: back to the 2D rig, which has followed the same timeline.
+        let dropped = false;
+        const drop = (why: string) => {
+          if (dropped) return;
+          dropped = true;
+          delete root.dataset.scene;
+          root.dataset.sceneDropped = why;
+          // Outside the frame callback that reported it.
+          setTimeout(() => cleanups.forEach((fn) => fn()), 0);
+        };
+
         const created = await createShowcaseScene({
           canvas,
           urls,
           state: S,
-          allowSoftware: allowSoftwareGL(),
+          software: gpu.software,
+          quality: qualityParam(),
+          safetyNet: !query.has('force3d'),
           report: (p) => report(0.05 + p * 0.95),
           measure,
+          onUnusable: drop,
           onContextLost: () => delete root.dataset.scene,
           onContextRestored: () => {
             root.dataset.scene = 'on';
@@ -303,7 +344,7 @@ export function initShowcase(root: HTMLElement): void {
         }
         scene = created;
 
-        // Draw on demand: only when the scrubbed state changed or the size did, and only on screen.
+        // Draw on demand: whenever the scrubbed state moved or the size did, and only on screen.
         const tick = () => {
           scene?.renderIfDirty();
         };
@@ -344,9 +385,8 @@ export function initShowcase(root: HTMLElement): void {
 
         created.invalidate();
         root.dataset.scene = 'on';
-        if (new URLSearchParams(location.search).has('debug3d')) {
-          (window as unknown as { __haptic3d?: unknown }).__haptic3d = { scene: created, state: S };
-        }
+        root.dataset.quality = created.internals.lite ? 'lite' : 'high';
+        if (debug) debug.scene = created;
       };
 
       const safeStart = (report: (p: number) => void) =>

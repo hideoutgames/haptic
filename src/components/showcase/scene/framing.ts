@@ -38,7 +38,7 @@ export function frameCamera(
     ground: Vector3;
     area: Area;
   },
-): void {
+): { centre: Vector3; dir: Vector3; distance: number } {
   const { width: W, height: H } = size;
   const { points, ground, area } = opts;
   const widthPoints = opts.widthPoints ?? points;
@@ -111,4 +111,5 @@ export function frameCamera(
   const dy = area.groundY !== undefined ? area.groundY - b.ground.y : (area.top + area.bottom) / 2 - (b.minY + b.maxY) / 2;
   camera.setViewOffset(W, H, -dx, -dy, W, H);
   camera.updateMatrixWorld(true);
+  return { centre, dir, distance };
 }

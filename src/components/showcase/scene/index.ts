@@ -3,8 +3,18 @@
  *
  * `createShowcaseScene` builds the renderer, the lighting and the three devices
  * (MacBook Pro, iPad Pro, iPhone Air, all modelled in code) and returns a small
- * controller. The scroll timeline in scripts/showcase.ts scrubs `state` and
- * calls `invalidate()`; the scene renders on demand, only while it is active.
+ * controller. The scroll timeline in scripts/showcase.ts scrubs `state`; the
+ * scene draws on demand, only while it is active, and draws every frame in
+ * which the scrubbed state still moves (so the scrub catching up is never
+ * choppy).
+ *
+ * Nothing may be compiled, uploaded or allocated while the page scrolls: all
+ * programs are compiled and all textures and buffers uploaded during start-up
+ * (`warmUp`, which the page's preloader waits for), and a frame-time governor
+ * (governor.ts) trades resolution for smoothness on weak GPUs. A software
+ * renderer (no GPU) gets a cheaper configuration of the same scene, and the
+ * governor's safety net hands the page back to its 2D rig if even that is too
+ * slow to be usable.
  *
  * Nothing here knows about GSAP or the DOM beyond the canvas and the size/area
  * callbacks it is given, so the module can be loaded lazily as one chunk.
@@ -15,25 +25,36 @@ import {
   InstancedMesh,
   Mesh,
   MeshBasicMaterial,
-  MeshStandardMaterial,
   PerspectiveCamera,
   PlaneGeometry,
   Scene,
   SRGBColorSpace,
   Vector3,
   WebGLRenderer,
+  type Material,
   type Object3D,
   type Texture,
 } from 'three';
-import { applyState, finalState, initialState, LAYOUTS, worldShift, type Layout, type SceneState, type ShadowSpec } from './choreography';
+import {
+  applyState,
+  dollyFactor,
+  finalState,
+  initialState,
+  LAYOUTS,
+  worldShift,
+  type Layout,
+  type SceneState,
+  type ShadowSpec,
+} from './choreography';
 import { createEnvironment, createLights } from './environment';
 import { frameCamera, pointsOf } from './framing';
+import { FrameGovernor, GPU_CONFIG, SOFTWARE_CONFIG } from './governor';
 import { createIPad, IPAD } from './ipad';
 import { createIPhone, IPHONE } from './iphone';
 import { createMacBook, MAC } from './macbook';
-import { createMaterials } from './materials';
+import { createMaterials, reflectiveMaterials } from './materials';
 import { createShadowTexture, loadScreens } from './textures';
-import type { SceneOptions, ShowcaseScene } from './types';
+import { STATE_KEYS, type SceneOptions, type ShowcaseScene } from './types';
 
 export type { SceneOptions, SceneState, ShowcaseScene } from './types';
 
@@ -43,27 +64,40 @@ export type { SceneOptions, SceneState, ShowcaseScene } from './types';
  * Small, touch-sized canvases get the smaller budget (their GPUs are the
  * weakest); a phone or a portrait tablet still renders at 2x.
  */
-const PIXEL_BUDGET = { compact: 3.4e6, large: 8e6 };
+const PIXEL_BUDGET = { compact: 3.4e6, large: 8e6, software: 0.8e6 };
 
-function pixelRatioFor(width: number, height: number): number {
-  const budget = width <= 1100 ? PIXEL_BUDGET.compact : PIXEL_BUDGET.large;
-  const fit = Math.sqrt(budget / (width * height));
-  return Math.max(1, Math.min(window.devicePixelRatio || 1, 2, fit));
-}
+/** Pixel ratios the governor steps through, largest first (capped by what the screen offers). */
+const RATIOS = [2, 1.5, 1.25, 1];
+/** A software renderer steps down from its budget ratio by these factors. */
+const SOFTWARE_STEPS = [1, 0.85, 0.72];
 
 const SCREEN_SIZES = { tablet: { w: 2360, h: 1640 }, phone: { w: 750, h: 1640 }, projects: { w: 1179, h: 2556 } };
 
+/** Ratios from largest to smallest for a canvas of this size. */
+function ladderFor(width: number, height: number, lite: boolean): number[] {
+  if (lite) {
+    const base = Math.min(1, Math.sqrt(PIXEL_BUDGET.software / (width * height)));
+    return SOFTWARE_STEPS.map((k) => Math.max(0.5, base * k));
+  }
+  const budget = width <= 1100 ? PIXEL_BUDGET.compact : PIXEL_BUDGET.large;
+  const fit = Math.sqrt(budget / (width * height));
+  const base = Math.max(1, Math.min(window.devicePixelRatio || 1, 2, fit));
+  const ladder = [base, ...RATIOS.filter((r) => r < base - 0.01)];
+  return ladder;
+}
+
 export async function createShowcaseScene(opts: SceneOptions): Promise<ShowcaseScene> {
   const { canvas, report = () => {} } = opts;
+  const lite = opts.quality === 'lite' || (opts.quality !== 'high' && !!opts.software);
 
-  // A software renderer (blocklisted GPU, VM, remote desktop) would stall the
-  // page for seconds: refuse it, so the caller keeps the 2D rig. `allowSoftware`
-  // is for debugging and screenshot tooling only.
+  // Antialiasing is decided when the context is created: a software renderer
+  // gets none (it multiplies the cost of every pixel).
   const renderer = new WebGLRenderer({
     canvas,
-    antialias: true,
+    antialias: !lite,
     alpha: true,
-    failIfMajorPerformanceCaveat: !opts.allowSoftware,
+    stencil: false,
+    failIfMajorPerformanceCaveat: false,
   });
   renderer.setClearColor(0x000000, 0);
   renderer.outputColorSpace = SRGBColorSpace;
@@ -74,26 +108,23 @@ export async function createShowcaseScene(opts: SceneOptions): Promise<ShowcaseS
   const scene = new Scene();
   const camera = new PerspectiveCamera(24, 1, 300, 9000);
 
-  const textures = await loadScreens(opts.urls, renderer, (p) => report(0.12 + p * 0.5));
-  const materials = createMaterials();
+  const textures = await loadScreens(opts.urls, renderer, (p) => report(0.12 + p * 0.4));
+  const materials = createMaterials(lite);
+  const reflective = reflectiveMaterials(materials, lite);
   // Each PBR material gets the environment explicitly, so its own
   // envMapIntensity can balance the metal against the glass.
   const makeEnvironment = () => {
     const env = createEnvironment(renderer);
-    for (const m of Object.values(materials)) {
-      if (typeof m === 'function') continue;
-      const pbr = m as MeshStandardMaterial;
-      if ('envMapIntensity' in pbr) {
-        pbr.envMap = env;
-        pbr.needsUpdate = true;
-      }
+    for (const pbr of reflective) {
+      pbr.envMap = env;
+      pbr.needsUpdate = true;
     }
     return env;
   };
   let environment = makeEnvironment();
-  report(0.68);
+  report(0.58);
 
-  const mac = createMacBook(materials, textures.tablet, SCREEN_SIZES.tablet);
+  const mac = createMacBook(materials, textures.tablet, SCREEN_SIZES.tablet, lite);
   const ipad = createIPad(materials, textures.tablet, SCREEN_SIZES.tablet);
   const phone = createIPhone(materials, textures.phone, textures.projects, {
     editor: SCREEN_SIZES.phone,
@@ -144,82 +175,198 @@ export async function createShowcaseScene(opts: SceneOptions): Promise<ShowcaseS
     mesh.position.x += Math.sin(s.yaw) * footprint.dz;
     mesh.position.z += Math.cos(s.yaw) * footprint.dz;
   };
+  // Footprints of the three shadows (constant per layout), kept out of the frame loop.
+  const MAC_SHADOW = { w: MAC.width * 0.94, d: MAC.depth * 0.9, dz: 0, opacity: 0.72 };
+  const PHONE_SHADOW = { w: IPHONE.width * 0.95, d: 28, dz: -10, opacity: 0.72 };
+  const ipadShadow = { w: 0, d: 0, dz: 0, opacity: 0.72 };
 
   const state = opts.state ?? initialState();
+  const models = { mac, ipad, phone };
   let layout: Layout = LAYOUTS.wide;
   let active = false;
   let dirty = true;
   let disposed = false;
   let contextLost = false;
+  let unusable = false;
 
-  let override: Partial<SceneState> | null = null;
-  const pose = (ignoreOverride = false) => {
-    const eff = override && !ignoreOverride ? { ...state, ...override } : state;
-    const placement = applyState({ mac, ipad, phone }, eff, layout);
-    world.position.z = ignoreOverride ? 0 : worldShift(eff, layout);
-    setShadow(shadows.mac, placement.mac, { w: MAC.width * 0.94, d: MAC.depth * 0.9, dz: 0, opacity: 0.72 });
-    const ks = layout.ipad.scale ?? 1;
-    setShadow(shadows.ipad, placement.ipad, { w: IPAD.width * 0.9 * ks, d: 34 * ks, dz: -16 * ks, opacity: 0.72 });
-    setShadow(shadows.phone, placement.phone, { w: IPHONE.width * 0.95, d: 28, dz: -10, opacity: 0.72 });
+  // The camera is placed once per layout (framing); the dolly then only moves it along its view axis.
+  const camCentre = new Vector3();
+  const camDir = new Vector3();
+  let camDistance = 1;
+  const placeCamera = () => {
+    camera.position.copy(camCentre).addScaledVector(camDir, camDistance * dollyFactor(eff));
+    camera.updateMatrixWorld();
   };
 
+  let override: Partial<SceneState> | null = null;
+  /** The state actually drawn: the scrubbed one, with any debug override on top. */
+  const eff: SceneState = { ...state };
+  /** Poses everything for `src` (the scrubbed state unless given another, e.g. the finished one for framing). */
+  const pose = (src: SceneState = state) => {
+    for (let i = 0; i < STATE_KEYS.length; i++) {
+      const k = STATE_KEYS[i];
+      eff[k] = override && src === state && override[k] !== undefined ? (override[k] as number) : src[k];
+    }
+    const placement = applyState(models, eff, layout);
+    world.position.z = worldShift(eff, layout);
+    setShadow(shadows.mac, placement.mac, MAC_SHADOW);
+    const ks = layout.ipad.scale ?? 1;
+    ipadShadow.w = IPAD.width * 0.9 * ks;
+    ipadShadow.d = 34 * ks;
+    ipadShadow.dz = -16 * ks;
+    setShadow(shadows.ipad, placement.ipad, ipadShadow);
+    setShadow(shadows.phone, placement.phone, PHONE_SHADOW);
+    placeCamera();
+  };
+
+  // ---- Resolution ----
+  const base = lite ? SOFTWARE_CONFIG : GPU_CONFIG;
+  // `safetyNet: false` (debugging) never gives up on the 3D scene.
+  const governor = new FrameGovernor(opts.safetyNet === false ? { ...base, netFrames: 0 } : base);
+  let ladder: number[] = [1];
   let cssWidth = 0;
   let cssHeight = 0;
   let pixelRatio = 0;
+
+  /** Sets the drawing buffer for the governor's current level. Clears it. */
+  const applyRatio = () => {
+    const r = ladder[Math.min(governor.level, ladder.length - 1)];
+    if (r === pixelRatio) return false;
+    renderer.setPixelRatio(r);
+    renderer.setSize(cssWidth, cssHeight, false);
+    pixelRatio = r;
+    return true;
+  };
+
   const resize = () => {
     if (disposed) return;
     const m = opts.measure();
     if (m.width < 2 || m.height < 2) return;
     layout = m.stacked ? LAYOUTS.stacked : LAYOUTS.wide;
-    const dpr = pixelRatioFor(m.width, m.height);
+    ladder = ladderFor(m.width, m.height, lite);
+    governor.setSteps(ladder.length - 1);
     // Resizing the drawing buffer clears it, so only do it when the size
     // really changed (the page re-measures on every ScrollTrigger refresh).
-    const resized = m.width !== cssWidth || m.height !== cssHeight || dpr !== pixelRatio;
-    if (resized) {
-      renderer.setPixelRatio(dpr);
-      renderer.setSize(m.width, m.height, false);
-      pixelRatio = dpr;
-    }
+    const sizeChanged = m.width !== cssWidth || m.height !== cssHeight;
     cssWidth = m.width;
     cssHeight = m.height;
+    let resized = false;
+    if (sizeChanged) {
+      const r = ladder[Math.min(governor.level, ladder.length - 1)];
+      renderer.setPixelRatio(r);
+      renderer.setSize(cssWidth, cssHeight, false);
+      pixelRatio = r;
+      resized = true;
+    } else {
+      resized = applyRatio();
+    }
+    if (resized) governor.reset();
 
-    // Fit the camera to the finished composition, then restore the real state.
-    const saved = { ...state };
-    Object.assign(state, finalState());
-    pose(true);
-    const finalMac = mac.group;
-    frameCamera(camera, { width: m.width, height: m.height }, {
+    // Fit the camera to the finished composition (posed from a state of its own).
+    pose(finalState());
+    const framed = frameCamera(camera, { width: m.width, height: m.height }, {
       fov: layout.fov,
       elevation: layout.elevation,
       azimuth: layout.azimuth,
-      points: pointsOf([finalMac, ipad.group, phone.group] as Object3D[]),
+      points: pointsOf([mac.group, ipad.group, phone.group] as Object3D[]),
       // Desktop: the MacBook's width sets the scale; the others hang off its left.
-      widthPoints: m.stacked ? undefined : pointsOf([finalMac] as Object3D[]),
+      widthPoints: m.stacked ? undefined : pointsOf([mac.group] as Object3D[]),
       ground: new Vector3(layout.mac.x, 0, layout.mac.z + MAC.depth / 2),
       area: m.area,
     });
-    Object.assign(state, saved);
+    // The framed camera is where the dolly ends: remember it and its view axis.
+    camCentre.copy(framed.centre);
+    camDir.copy(framed.dir);
+    camDistance = framed.distance;
     pose();
     dirty = true;
     // A cleared buffer must not reach the screen: draw straight away.
     if (resized && active && !contextLost) {
       dirty = false;
+      remember();
       renderer.render(scene, camera);
     }
   };
 
-  resize();
-  report(0.78);
+  // ---- Change detection: the scene draws whenever the scrubbed state moved ----
+  const lastDrawn = new Float32Array(STATE_KEYS.length).fill(NaN);
+  let lastOverrideKey = 0;
+  let overrideKey = 0;
+  const remember = () => {
+    for (let i = 0; i < STATE_KEYS.length; i++) lastDrawn[i] = state[STATE_KEYS[i]];
+    lastOverrideKey = overrideKey;
+  };
+  const stateMoved = () => {
+    if (overrideKey !== lastOverrideKey) return true;
+    for (let i = 0; i < STATE_KEYS.length; i++) if (state[STATE_KEYS[i]] !== lastDrawn[i]) return true;
+    return false;
+  };
 
-  // Compile every shader before the first frame, without blocking the main thread.
-  pose();
-  try {
-    await renderer.compileAsync(scene, camera);
-  } catch {
-    // compileAsync is an optimisation; the first render compiles synchronously.
-  }
-  report(0.94);
-  renderer.render(scene, camera);
+  resize();
+  report(0.64);
+
+  // ---- Warm-up: every program, texture and buffer is on the GPU before the first scrolled frame ----
+  const warmUp = async () => {
+    // Everything is posed from states of its own: the scrubbed one belongs to
+    // the timeline, which keeps running while this awaits.
+    const warm = finalState();
+    warm.phoneEditor = 0.5;
+
+    // Textures first (uploads and mipmaps), so no first use during scrolling.
+    const seen = new Set<Texture>();
+    const upload = (t: Texture | null | undefined) => {
+      if (t && !seen.has(t)) {
+        seen.add(t);
+        renderer.initTexture(t);
+      }
+    };
+    scene.traverse((obj) => {
+      const mat = (obj as Mesh).material as Material | Material[] | undefined;
+      const list = Array.isArray(mat) ? mat : mat ? [mat] : [];
+      for (const m of list) upload((m as MeshBasicMaterial).map);
+    });
+    Object.values(textures).forEach(upload);
+    report(0.7);
+
+    // Compile with all three devices visible (three skips invisible objects).
+    pose(warm);
+    try {
+      await renderer.compileAsync(scene, camera);
+    } catch {
+      // compileAsync is an optimisation; the first render compiles synchronously.
+    }
+    report(0.84);
+
+    // One hidden render per device state, with culling off so that even the
+    // parts outside the frame get their buffers uploaded. The canvas is not
+    // shown yet. A software renderer needs only the full one: the others
+    // would repeat it at a cost of seconds.
+    const cull: Array<[Object3D, boolean]> = [];
+    scene.traverse((obj) => {
+      cull.push([obj, obj.frustumCulled]);
+      obj.frustumCulled = false;
+    });
+    const gl = renderer.getContext();
+    const px = new Uint8Array(4);
+    const states: Array<Partial<SceneState>> = lite ? [{}] : [{ ipad: 0, phone: 0 }, { phone: 0 }, { flip: 0, phoneEditor: 0 }, {}];
+    for (const patch of states) {
+      Object.assign(warm, finalState(), { phoneEditor: 0.5 }, patch);
+      pose(warm);
+      renderer.render(scene, camera);
+      // Wait for the GPU: drivers finish their lazy work at the first draw.
+      gl.readPixels(0, 0, 1, 1, gl.RGBA, gl.UNSIGNED_BYTE, px);
+      await new Promise<void>((resolve) => setTimeout(resolve, 0));
+    }
+    for (const [obj, value] of cull) obj.frustumCulled = value;
+
+    // The last warm-up frame is the whole composition: do not leave it on the
+    // canvas for the moment before the first real frame.
+    renderer.clear();
+    pose();
+    report(0.97);
+  };
+  await warmUp();
+  dirty = true;
   report(1);
 
   const onLost = (e: Event) => {
@@ -232,6 +379,7 @@ export async function createShowcaseScene(opts: SceneOptions): Promise<ShowcaseS
     environment = makeEnvironment();
     contextLost = false;
     dirty = true;
+    governor.reset();
     opts.onContextRestored?.();
   };
   canvas.addEventListener('webglcontextlost', onLost);
@@ -266,24 +414,61 @@ export async function createShowcaseScene(opts: SceneOptions): Promise<ShowcaseS
     return out;
   };
 
+  let lastRenderAt = 0;
+  let drawn = 0;
   const api: ShowcaseScene = {
     state,
-    internals: { renderer, camera, scene, mac, ipad, phone, materials, shadows, screenBounds, flags: () => ({ active, dirty, disposed, contextLost }) },
+    internals: {
+      renderer,
+      camera,
+      scene,
+      mac,
+      ipad,
+      phone,
+      materials,
+      shadows,
+      screenBounds,
+      governor,
+      lite,
+      flags: () => ({ active, dirty, disposed, contextLost, unusable }),
+      stats: () => ({ pixelRatio, level: governor.level, ceiling: governor.ceiling, median: governor.lastMedian, netMedian: governor.netMedian, drawn, lastRenderAt }),
+      pose: () => ({ ...eff }),
+    },
     invalidate() {
       dirty = true;
     },
     setActive(value) {
+      if (!value) governor.rest();
       active = value;
     },
-    renderIfDirty() {
-      if (!dirty || !active || disposed || contextLost) return false;
-      dirty = false;
-      pose();
-      renderer.render(scene, camera);
-      return true;
+    renderIfDirty(now = performance.now()) {
+      if (disposed || contextLost || unusable) return false;
+      if (!active) return false;
+      let drew = false;
+      if (dirty || stateMoved()) {
+        dirty = false;
+        remember();
+        pose();
+        renderer.render(scene, camera);
+        drew = true;
+        drawn++;
+        lastRenderAt = now;
+      }
+      const verdict = governor.frame(now, drew);
+      if (verdict === 'lower' || verdict === 'raise') {
+        if (applyRatio()) {
+          pose();
+          renderer.render(scene, camera);
+        }
+      } else if (verdict === 'unusable') {
+        unusable = true;
+        opts.onUnusable?.(`median frame time ${Math.round(governor.netMedian)} ms`);
+      }
+      return drew;
     },
     setOverride(values) {
       override = values;
+      overrideKey++;
       dirty = true;
     },
     resize,

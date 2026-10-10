@@ -11,7 +11,22 @@ import {
   MeshStandardMaterial,
 } from 'three';
 
-export function createMaterials() {
+/**
+ * `lite` is for software rendering, where every pixel is shaded on the CPU:
+ * only the metal reflects the environment (looking up the prefiltered cube map
+ * is the most expensive part of a pixel), the clear-coated glass becomes plain
+ * standard material or black, and the reflection layers over the screens are
+ * switched off.
+ */
+export function createMaterials(lite = false) {
+  const glossy = (params: ConstructorParameters<typeof MeshPhysicalMaterial>[0] & { clearcoat?: number; clearcoatRoughness?: number }): MeshStandardMaterial => {
+    if (!lite) return new MeshPhysicalMaterial(params);
+    const { clearcoat, clearcoatRoughness, ...rest } = params as Record<string, unknown>;
+    void clearcoat;
+    void clearcoatRoughness;
+    return new MeshStandardMaterial(rest as ConstructorParameters<typeof MeshStandardMaterial>[0]);
+  };
+
   /** Space Black anodised aluminium: very dark, warm-neutral grey, satin. */
   const aluminium = new MeshStandardMaterial({
     color: new Color('#4e5156'),
@@ -36,17 +51,19 @@ export function createMaterials() {
   });
 
   /** Black display glass: bezels, notch, the dark parts of the glass. */
-  const glassBlack = new MeshPhysicalMaterial({
-    color: new Color('#010102'),
-    metalness: 0,
-    roughness: 0.07,
-    clearcoat: 0.6,
-    clearcoatRoughness: 0.03,
-    envMapIntensity: 0.35,
-  });
+  const glassBlack = lite
+    ? new MeshBasicMaterial({ color: new Color('#010102') })
+    : glossy({
+        color: new Color('#010102'),
+        metalness: 0,
+        roughness: 0.07,
+        clearcoat: 0.6,
+        clearcoatRoughness: 0.03,
+        envMapIntensity: 0.35,
+      });
 
   /** Frosted back glass of the iPhone Air and its camera plateau. */
-  const backGlass = new MeshPhysicalMaterial({
+  const backGlass = glossy({
     color: new Color('#202127'),
     metalness: 0.15,
     roughness: 0.3,
@@ -56,7 +73,7 @@ export function createMaterials() {
   });
 
   /** Glossy glass of the camera plateau and the lens cover (clearer than the frosted back). */
-  const plateauGlass = new MeshPhysicalMaterial({
+  const plateauGlass = glossy({
     color: new Color('#15161b'),
     metalness: 0.05,
     roughness: 0.12,
@@ -66,7 +83,7 @@ export function createMaterials() {
   });
 
   /** Camera lens glass (very dark blue-black, mirror-like). */
-  const lens = new MeshPhysicalMaterial({
+  const lens = glossy({
     color: new Color('#020409'),
     metalness: 0.2,
     roughness: 0.03,
@@ -74,7 +91,7 @@ export function createMaterials() {
     clearcoatRoughness: 0.02,
   });
 
-  const lensCoat = new MeshPhysicalMaterial({
+  const lensCoat = glossy({
     color: new Color('#0a1226'),
     metalness: 0.6,
     roughness: 0.12,
@@ -136,6 +153,7 @@ export function createMaterials() {
   };
   const glassReflection = glare(0.5);
   const glassReflectionMac = glare(0.2);
+  if (lite) glassReflection.visible = glassReflectionMac.visible = false;
 
   const unlit = (color = '#ffffff') =>
     new MeshBasicMaterial({ color: new Color(color), toneMapped: false, polygonOffset: true, polygonOffsetFactor: -1, polygonOffsetUnits: -1 });
@@ -162,3 +180,9 @@ export function createMaterials() {
 }
 
 export type Materials = ReturnType<typeof createMaterials>;
+
+/** The materials that get the environment map (see createEnvironment). */
+export function reflectiveMaterials(m: Materials, lite: boolean): MeshStandardMaterial[] {
+  if (lite) return [m.aluminium, m.aluminiumDark, m.titanium];
+  return Object.values(m).filter((v): v is MeshStandardMaterial => typeof v !== 'function' && 'envMapIntensity' in v);
+}

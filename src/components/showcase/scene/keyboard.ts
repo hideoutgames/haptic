@@ -141,7 +141,7 @@ export interface Keyboard {
  * Builds the keycaps and legends for a keyboard whose back edge is at z = 0
  * (centred in x), standing on `y = 0`.
  */
-export function createKeyboard(keycap: Material): Keyboard {
+export function createKeyboard(keycap: Material, lite = false): Keyboard {
   const legends: Legend[] = [];
   const { keys, width, depth } = layoutKeys(legends);
   const group = new Group();
@@ -155,7 +155,7 @@ export function createKeyboard(keycap: Material): Keyboard {
   const KEY_H = 1.7;
   const m = new Matrix4();
   for (const list of bySize.values()) {
-    const geo = new RoundedBoxGeometry(list[0].w, KEY_H, list[0].d, 3, 0.6);
+    const geo = new RoundedBoxGeometry(list[0].w, KEY_H, list[0].d, lite ? 1 : 3, 0.6);
     const mesh = new InstancedMesh(geo, keycap, list.length);
     list.forEach((key, i) => {
       m.makeTranslation(key.x, KEY_H / 2, key.z);

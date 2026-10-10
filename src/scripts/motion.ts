@@ -40,7 +40,7 @@ export function initSmoothScroll(): Lenis | null {
   if (lenis || prefersReducedMotion()) return lenis;
 
   lenis = new Lenis({
-    lerp: 0.12,
+    lerp: 0.088,
     // Touch devices keep native momentum scrolling.
     syncTouch: false,
   });
