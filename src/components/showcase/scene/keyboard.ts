@@ -171,7 +171,10 @@ export function createKeyboard(keycap: Material, lite = false): Keyboard {
   const positions: number[] = [];
   const uvs: number[] = [];
   const index: number[] = [];
-  const y = KEY_H + 0.04;
+  // Printed on the caps: just far enough above them for the depth test to
+  // keep the quads in front at the camera's grazing angle, even with a coarse
+  // depth buffer.
+  const y = KEY_H + 0.1;
   keys.forEach((key) => {
     if (key.legend === undefined) return;
     const size = Math.min(key.w, key.d, 15.2);
