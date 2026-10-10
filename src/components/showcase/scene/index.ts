@@ -303,6 +303,28 @@ export async function createShowcaseScene(opts: SceneOptions): Promise<ShowcaseS
     return true;
   };
 
+  /** Screen-space box (CSS px) of a group's vertices in its current pose; instanced meshes are left out. */
+  const projected = new Vector3();
+  const screenBox = (group: Object3D) => {
+    const box = { left: Infinity, top: Infinity, right: -Infinity, bottom: -Infinity };
+    group.updateWorldMatrix(true, true);
+    group.traverse((obj) => {
+      const mesh = obj as Mesh;
+      const position = mesh.geometry?.getAttribute('position');
+      if (!position || (mesh as { isInstancedMesh?: boolean }).isInstancedMesh) return;
+      for (let i = 0; i < position.count; i++) {
+        projected.fromBufferAttribute(position, i).applyMatrix4(mesh.matrixWorld).project(camera);
+        const x = ((projected.x + 1) / 2) * cssWidth;
+        const y = ((1 - projected.y) / 2) * cssHeight;
+        box.left = Math.min(box.left, x);
+        box.right = Math.max(box.right, x);
+        box.top = Math.min(box.top, y);
+        box.bottom = Math.max(box.bottom, y);
+      }
+    });
+    return box;
+  };
+
   /**
    * Finds where the iPad starts its slide on this canvas: the distance left of
    * its resting place at which it and its stand, turned as they start and seen
@@ -315,22 +337,11 @@ export async function createShowcaseScene(opts: SceneOptions): Promise<ShowcaseS
     const start = finalState();
     start.ipad = 0;
     start.dolly = 0;
-    const v = new Vector3();
     /** Right-most point (CSS px) of the iPad and its stand with the iPad `dx` left of its place. */
     const rightEdge = (dx: number) => {
       arrivalDx = dx;
       pose(start);
-      ipad.group.updateWorldMatrix(true, true);
-      let right = -Infinity;
-      ipad.group.traverse((obj) => {
-        const position = (obj as Mesh).geometry?.getAttribute('position');
-        if (!position) return;
-        for (let i = 0; i < position.count; i++) {
-          v.fromBufferAttribute(position, i).applyMatrix4(obj.matrixWorld).project(camera);
-          right = Math.max(right, ((v.x + 1) / 2) * cssWidth);
-        }
-      });
-      return right;
+      return screenBox(ipad.group).right;
     };
     // Secant steps: the position on screen is close to linear in the distance.
     let dx0 = layout.arrival.dx;
@@ -354,10 +365,15 @@ export async function createShowcaseScene(opts: SceneOptions): Promise<ShowcaseS
     if (m.width < 2 || m.height < 2) return;
     layout = m.stacked ? LAYOUTS.stacked : LAYOUTS.wide;
     // The iPad's broad shadow reaches back over the ground as far as its top edge.
-    const reach = IPAD.height * Math.sin(layout.ipad.pitch) * 0.85;
-    ipadShadow.d = reach + STAND.rail.lipThickness;
-    ipadShadow.dz = (STAND.rail.lipThickness - reach) / 2;
-    ladder = ladderFor(m.width, m.height, lite);
+    const shadowReach = IPAD.height * Math.sin(layout.ipad.pitch) * 0.85;
+    ipadShadow.d = shadowReach + STAND.rail.lipThickness;
+    ipadShadow.dz = (STAND.rail.lipThickness - shadowReach) / 2;
+    // A new ladder means other pixel ratios behind the same levels. (The page
+    // also measures again on every scroll refresh: an unchanged ladder keeps
+    // what the governor learnt.)
+    const next = ladderFor(m.width, m.height, lite);
+    if (next.length !== ladder.length || next.some((r, i) => r !== ladder[i])) governor.forget();
+    ladder = next;
     governor.setSteps(ladder.length - 1);
     // Resizing the drawing buffer clears it, so only do it when the size
     // really changed (the page re-measures on every ScrollTrigger refresh).
@@ -503,33 +519,7 @@ export async function createShowcaseScene(opts: SceneOptions): Promise<ShowcaseS
   canvas.addEventListener('webglcontextrestored', onRestored);
 
   // Debugging: screen-space box (CSS px) of each device in the current pose.
-  const screenBounds = () => {
-    const out: Record<string, { left: number; top: number; right: number; bottom: number }> = {};
-    const v = new Vector3();
-    for (const [name, group] of [['mac', mac.group], ['ipad', ipad.group], ['phone', phone.group]] as const) {
-      let left = Infinity;
-      let top = Infinity;
-      let right = -Infinity;
-      let bottom = -Infinity;
-      group.updateWorldMatrix(true, true);
-      group.traverse((obj) => {
-        const mesh = obj as Mesh;
-        const pos = mesh.geometry?.getAttribute?.('position');
-        if (!pos || (mesh as { isInstancedMesh?: boolean }).isInstancedMesh) return;
-        for (let i = 0; i < pos.count; i++) {
-          v.fromBufferAttribute(pos, i).applyMatrix4(mesh.matrixWorld).project(camera);
-          const x = ((v.x + 1) / 2) * cssWidth;
-          const y = ((1 - v.y) / 2) * cssHeight;
-          left = Math.min(left, x);
-          right = Math.max(right, x);
-          top = Math.min(top, y);
-          bottom = Math.max(bottom, y);
-        }
-      });
-      out[name] = { left, top, right, bottom };
-    }
-    return out;
-  };
+  const screenBounds = () => ({ mac: screenBox(mac.group), ipad: screenBox(ipad.group), phone: screenBox(phone.group) });
 
   let lastRenderAt = 0;
   let drawn = 0;

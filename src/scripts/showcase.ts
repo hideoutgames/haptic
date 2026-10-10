@@ -51,9 +51,6 @@ import {
 import { getLenis, gsap, initSmoothScroll, ScrollTrigger } from './motion';
 import { track } from './preload';
 
-/** Pin length as a multiple of the screen height. */
-const PIN_SCREENS = { side: 4.35, stacked: 3.8 };
-
 /**
  * The pinned timeline, in units of the side layout's pin length divided by its
  * screen height (1 unit = one screen of scroll there; the stacked layout is
@@ -75,6 +72,12 @@ const T = {
   /** End of the pin: everything is held from the last move to here. */
   end: 4.35,
 };
+
+/**
+ * Pin length as a multiple of the screen height: one screen per unit of `T`
+ * beside the copy, a little less when stacked.
+ */
+const PIN_SCREENS = { side: T.end, stacked: T.end * 0.875 };
 
 /** How long a line of copy takes to fade out (and, after it, in). */
 const COPY_FADE = 0.4;

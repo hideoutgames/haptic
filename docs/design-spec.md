@@ -129,7 +129,7 @@ Devices (mockup composition, the final state of the scroll animation):
 - MacBook Pro 16 (Space Black frame `macbook-pro-16-space-black.png`, 4256 × 2834, screen rect x 400 y 300 w 3456 h 2234, top radius ≈ 55 source px)
   on the right, left edge at x ≈ 751, top ≈ 1380, running off the right edge of the viewport. The screen shows the editor screenshot top-aligned (with the iPad status bar visible).
 - iPhone Air (Space Black frame `iphone-air-space-black.png`, 1490 × 2996, screen x 100 y 100 w 1290 h 2796, radius ≈ 240 source px)
-  in front of the MacBook's left edge: x ≈ 676 → 849, y ≈ 1510 → 1872. Shows `editor-phone.jpg`.
+  in front of the MacBook's left edge: x ≈ 676 → 849, y ≈ 1510 → 1872. Shows `projects-phone.jpg` (Haptic's Projects screen).
 - NEW: iPad Pro 11 (Space Black frame `ipad-pro-11-landscape-space-black.png`, 2620 × 1868, screen x 100 y 100 w 2420 h 1668, radius ≈ 69 source px). Shows `editor-tablet.jpg`.
 
 ## 4. Download section (new, not in mockup)
@@ -150,4 +150,4 @@ the Haptic Pro note and "View Pricing for more details.", then an "Other platfor
 
 ## Extra placeholder screenshots
 
-- `src/assets/editor/projects-phone.jpg` (1179 × 2556): iPhone Projects/home screen of the app, an alternative screen for the phone mockup.
+- `src/assets/editor/projects-phone.jpg` (1179 × 2556): iPhone Projects/home screen of the app, the iPhone's screen in the device showcase.

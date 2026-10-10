@@ -173,8 +173,8 @@ export function createMaterials(lite = false) {
     return material;
   };
   const glassReflection = glare(0.5);
-  const glassReflectionMac = glare(0.2);
-  if (lite) glassReflection.visible = glassReflectionMac.visible = false;
+  const glassReflectionDim = glare(0.2);
+  if (lite) glassReflection.visible = glassReflectionDim.visible = false;
 
   const unlit = (color = '#ffffff') =>
     new MeshBasicMaterial({ color: new Color(color), toneMapped: false, polygonOffset: true, polygonOffsetFactor: -1, polygonOffsetUnits: -1 });
@@ -197,7 +197,7 @@ export function createMaterials(lite = false) {
     keycap,
     trackpad,
     glassReflection,
-    glassReflectionMac,
+    glassReflectionDim,
     unlit,
   };
 }

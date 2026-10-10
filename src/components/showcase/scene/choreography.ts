@@ -53,12 +53,13 @@ export interface Layout {
   entrance: { shiftX: number; yaw: number; scale: number };
   /**
    * How the iPad arrives: it slides in on its stand along the ground, from the
-   * left of the picture (so it never crosses the MacBook), and settles. It
-   * starts `dx` (mm) left of its resting place, though the scene replaces that
-   * with the distance that starts it just outside the canvas, which depends on
-   * the screen; `dz` (mm) nearer the viewer, so it is pushed back into place;
-   * and turned `yaw` (rad) further towards the way it is going than at rest,
-   * so it turns to face the front as it settles.
+   * left of the picture (so it never crosses the MacBook), and settles. How far
+   * left of its resting place it starts depends on the screen: the scene fits
+   * the distance that starts it just outside the canvas (`fitArrival` in
+   * index.ts), and `dx` (mm) is only where that search starts. It starts `dz`
+   * (mm) nearer the viewer, so it is pushed back into place, and turned `yaw`
+   * (rad) further towards the way it is going than at rest, so it turns to
+   * face the front as it settles.
    */
   arrival: { dx: number; dz: number; yaw: number };
   /**
@@ -193,7 +194,7 @@ export function dollyFactor(s: SceneState): number {
  * `arrivalDx` is how far left of its resting place the iPad starts (mm): the
  * scene passes the distance that starts it just outside the canvas.
  */
-export function applyState(models: Models, s: SceneState, L: Layout, arrivalDx: number = L.arrival.dx): Placement {
+export function applyState(models: Models, s: SceneState, L: Layout, arrivalDx: number): Placement {
   const { mac, ipad, phone } = models;
 
   // ---- MacBook: rises shut and turned, turns to face front, then opens ----

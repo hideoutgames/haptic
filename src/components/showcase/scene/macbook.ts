@@ -143,7 +143,7 @@ export function createMacBook(m: Materials, screen: Texture, tabletSize: { w: nu
     const spec = { cols: 6, rows: 42, pitchX: 2.1, pitchZ: 2.35, radius: 0.5 };
     const { width: gw, depth: gd, inset } = grilleExtent(spec);
     m.grille.map = createGrilleTexture(spec);
-    // Centre of the inlay: the first hole of the first row is 5.5 mm outside the well, 6 mm behind the keys.
+    // Centre of the inlay: the first hole of the first row is 5.5 mm outside the well, 6 mm in front of the keyboard's back edge.
     const gx = wellW / 2 + 5.5 - inset + gw / 2;
     const gz = kbBackZ + 6 - inset + gd / 2;
     for (const side of [-1, 1]) {
@@ -216,7 +216,7 @@ export function createMacBook(m: Materials, screen: Texture, tabletSize: { w: nu
   // Reflection layer over the whole glass.
   const glare = new Mesh(
     flatShape({ outline: translateOutline(roundedRectOutline(W - 2.6, D - 2.6, MAC.cornerRadius - 1.3, 12), 0, D / 2), uv: () => [0, 0] }),
-    m.glassReflectionMac,
+    m.glassReflectionDim,
   );
   glare.position.z = faceZ + 0.2;
   glare.renderOrder = 3;

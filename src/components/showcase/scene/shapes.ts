@@ -13,6 +13,16 @@ export type Radii = number | [tl: number, tr: number, br: number, bl: number];
 const HALF_PI = Math.PI / 2;
 
 /**
+ * Point at angle `t` on a unit superellipse, |x|^n + |y|^n = 1 (n = 2 is a
+ * circle; a little more gives the continuous-curvature corner of Apple hardware).
+ */
+function superellipse(t: number, n: number): [number, number] {
+  const c = Math.cos(t);
+  const s = Math.sin(t);
+  return [Math.sign(c) * Math.pow(Math.abs(c), 2 / n), Math.sign(s) * Math.pow(Math.abs(s), 2 / n)];
+}
+
+/**
  * Closed counter-clockwise outline of a rounded rectangle centred on the
  * origin. `n` is the superellipse exponent of the corners (2 = circular arc;
  * a little more gives the continuous-curvature corner of Apple hardware).
@@ -31,12 +41,7 @@ export function roundedRectOutline(w: number, h: number, radii: Radii, segments 
       return;
     }
     for (let i = 0; i <= segments; i++) {
-      const t = a0 + (i / segments) * HALF_PI;
-      const c = Math.cos(t);
-      const s = Math.sin(t);
-      // Superellipse: |x|^n + |y|^n = r^n
-      const ex = Math.sign(c) * Math.pow(Math.abs(c), 2 / n);
-      const ey = Math.sign(s) * Math.pow(Math.abs(s), 2 / n);
+      const [ex, ey] = superellipse(a0 + (i / segments) * HALF_PI, n);
       pts.push(new Vector2(cx + r * ex, cy + r * ey));
     }
     void sx;
@@ -301,10 +306,8 @@ export function roundedRectPlate(w: number, h: number, r: number, segments = 10,
     const centre = vertex(cx, cy);
     const arc: number[] = [];
     for (let i = 0; i <= segments; i++) {
-      const t = a0 + (i / segments) * HALF_PI;
-      const c = Math.cos(t);
-      const s = Math.sin(t);
-      arc.push(vertex(cx + r * Math.sign(c) * Math.pow(Math.abs(c), 2 / n), cy + r * Math.sign(s) * Math.pow(Math.abs(s), 2 / n)));
+      const [ex, ey] = superellipse(a0 + (i / segments) * HALF_PI, n);
+      arc.push(vertex(cx + r * ex, cy + r * ey));
     }
     for (let i = 0; i < segments; i++) idx.push(centre, arc[i], arc[i + 1]);
     return { centre, first: arc[0], last: arc[segments] };

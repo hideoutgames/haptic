@@ -93,7 +93,7 @@ export function createIPad(m: Materials, screen: Texture, texSize: { w: number; 
   const glare = new Mesh(
     flatShape({ outline: translateOutline(roundedRectOutline(W - 2.2, H - 2.2, IPAD.cornerRadius - 1.1, 12, 2.5), 0, H / 2), uv: () => [0, 0] }),
     // Leaning back far, the glass faces the bright horizon as the MacBook's lid does: the weaker layer.
-    m.glassReflectionMac,
+    m.glassReflectionDim,
   );
   glare.position.z = front + 0.12;
   glare.renderOrder = 3;

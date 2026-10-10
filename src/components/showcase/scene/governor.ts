@@ -104,6 +104,17 @@ export class FrameGovernor {
     this.ceiling = Math.min(this.ceiling, this.steps);
   }
 
+  /**
+   * The pixel ratios behind the levels changed (another canvas size or screen):
+   * what was learnt about the old ones, failed raises and locked levels, no
+   * longer applies.
+   */
+  forget(): void {
+    this.probation = -1;
+    this.failures.fill(0);
+    this.ceiling = 0;
+  }
+
   /** Forget the recent frames (the drawing buffer or the layout just changed). */
   reset(): void {
     this.count = 0;

@@ -1,7 +1,7 @@
 /**
- * Textures: the editor screenshots (loaded from the optimised URLs the page
- * hands over) and the few that are drawn in code: the key legends and the
- * soft contact shadow.
+ * Textures: the two screenshots, the editor and the Projects screen (loaded
+ * from the optimised URLs the page hands over), and the few that are drawn in
+ * code: the key legends, the speaker grille and the soft contact shadow.
  */
 import { CanvasTexture, ClampToEdgeWrapping, LinearFilter, LinearMipmapLinearFilter, SRGBColorSpace, Texture, TextureLoader, type WebGLRenderer } from 'three';
 
