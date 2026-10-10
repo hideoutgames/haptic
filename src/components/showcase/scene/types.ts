@@ -22,7 +22,7 @@ export interface SceneState {
   open: number;
   /** Display powers on. */
   screen: number;
-  /** iPad glides in. */
+  /** iPad slides in from the left on its stand. */
   ipad: number;
   /** iPhone rises. */
   phone: number;
