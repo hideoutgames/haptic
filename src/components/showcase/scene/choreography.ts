@@ -175,9 +175,13 @@ function placeStanding(g: Group, x: number, y: number, z: number, yaw: number, p
   g.rotation.set(-pitch, yaw, 0, 'YXZ');
 }
 
-/** Offset of the whole group along Z for the current state (stacked layout). */
+/**
+ * Offset of the whole group along Z for the current state (stacked layout):
+ * a quarter of the way back as the lid opens, the rest as the iPad joins, so
+ * the settle never starts or stops abruptly.
+ */
 export function worldShift(s: SceneState, L: Layout): number {
-  return L.settleZ * (1 - Math.max(s.ipad, s.open * 0.25));
+  return L.settleZ * (1 - (s.open * 0.25 + s.ipad * 0.75));
 }
 
 /** Camera distance relative to the framed one: DOLLY farther at the start, 1 at the end. */

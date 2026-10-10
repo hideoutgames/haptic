@@ -123,7 +123,9 @@ export function initShowcase(root: HTMLElement): void {
   const offStageLeft = (el: HTMLElement) => {
     let left = 0;
     for (let e: HTMLElement | null = el; e && e !== stage; e = e.offsetParent as HTMLElement | null) left += e.offsetLeft;
-    return -((left + el.offsetWidth) / el.offsetWidth) * 100 - 6;
+    // The spare grows with the distance: the perspective pulls the turned
+    // element's far edge back towards the middle by a few per cent of it.
+    return -((left + el.offsetWidth) / el.offsetWidth) * 106 - 6;
   };
 
   const mm = gsap.matchMedia();

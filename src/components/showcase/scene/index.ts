@@ -393,9 +393,10 @@ export async function createShowcaseScene(opts: SceneOptions): Promise<ShowcaseS
     camCentre.copy(framed.centre);
     camDir.copy(framed.dir);
     camDistance = framed.distance;
+    // The iPad's start depends on the canvas, and the depth range must cover it.
+    fitArrival();
     fitDepthRange();
     pose();
-    fitArrival();
     dirty = true;
     // A cleared buffer must not reach the screen: draw straight away.
     if (resized && active && !contextLost) {

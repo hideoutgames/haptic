@@ -180,6 +180,9 @@ export function createIPad(m: Materials, screen: Texture, texSize: { w: number; 
   // The strip lies flat, its length running back, and the hinge sits on the ground behind the iPad.
   strip.rotation.x = -Math.PI / 2;
   hinge.position.set(0, L.barrel, -L.hinge);
+  // These lie under and behind the leaning iPad, out of sight: drawn after
+  // everything else, so the depth test discards them before they are shaded.
+  for (const hidden of [strip, leg, hinge, pad]) hidden.renderOrder = 1;
   stand.add(strip, leg, hinge, pad);
 
   let lean = NaN;
