@@ -6,10 +6,10 @@
  *   before the pin  the MacBook arrives with the scrolling page, shut, and
  *                    turns gently from three-quarter view to face front
  *   0.05 – 1.05      the lid opens; the display lights once it is past 70 degrees
- *   1.16 – 1.35      hold: "Mac"
+ *   1.16 – 1.35      hold: "Desktop"
  *   1.35 – 2.25      the iPad slides in on its stand from just outside the left
  *                    edge, turning to face the front as it settles
- *   2.25 – 2.50      hold: "iPad"
+ *   2.25 – 2.50      hold: "Tablet"
  *   2.50 – 3.00      the iPhone rises into place, back to the viewer
  *   2.85 – 3.95      it turns slowly to face front, showing Projects
  *   3.95 – 4.35      final hold, then the pin releases
