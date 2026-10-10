@@ -5,14 +5,14 @@
  *
  *   before the pin  the MacBook arrives with the scrolling page, shut, and
  *                    turns gently from three-quarter view to face front
- *   0.08 – 1.28      the lid opens; the display lights once it is past 70 degrees
- *   1.41 – 1.91      hold: "Mac"
- *   1.91 – 2.76      the iPad glides in from the right on a shallow arc
- *   2.76 – 3.26      hold: "iPad"
- *   3.26 – 3.81      the iPhone rises into place, back to the viewer
- *   3.66 – 4.96      it turns slowly to face front, showing Projects
- *   4.81 – 5.26      Projects cross-fades to the editor
- *   5.26 – 5.96      final hold, then the pin releases
+ *   0.05 – 1.05      the lid opens; the display lights once it is past 70 degrees
+ *   1.22 – 1.45      hold: "Mac"
+ *   1.45 – 2.25      the iPad glides in from the right on a shallow arc
+ *   2.25 – 2.50      hold: "iPad"
+ *   2.50 – 3.00      the iPhone rises into place, back to the viewer
+ *   2.85 – 3.95      it turns slowly to face front, showing Projects
+ *   3.80 – 4.20      Projects cross-fades to the editor
+ *   4.20 – 4.50      final hold, then the pin releases
  *
  * Everything is eased with sine / power2 in-outs (no overshoot), scrubbed with
  * a long catch-up, and played in reverse when scrolling back. The camera
@@ -52,7 +52,7 @@ import { getLenis, gsap, initSmoothScroll, ScrollTrigger } from './motion';
 import { track } from './preload';
 
 /** Pin length as a multiple of the screen height. */
-const PIN_SCREENS = { side: 5.96, stacked: 5.2 };
+const PIN_SCREENS = { side: 4.5, stacked: 3.95 };
 
 /**
  * The pinned timeline, in units of the side layout's pin length divided by its
@@ -61,22 +61,22 @@ const PIN_SCREENS = { side: 5.96, stacked: 5.2 };
  */
 const T = {
   /** The lid opens slowly, the display lights as it passes SCREEN_ON_ANGLE. */
-  open: 0.08,
-  openDur: 1.2,
-  screenDur: 0.6,
+  open: 0.05,
+  openDur: 1.0,
+  screenDur: 0.5,
   /** The iPad glides in. */
-  ipad: 1.91,
-  ipadDur: 0.85,
+  ipad: 1.45,
+  ipadDur: 0.8,
   /** The iPhone rises, then turns from its back to its front. */
-  phone: 3.26,
-  phoneDur: 0.55,
-  flip: 3.66,
-  flipDur: 1.3,
+  phone: 2.5,
+  phoneDur: 0.5,
+  flip: 2.85,
+  flipDur: 1.1,
   /** Projects cross-fades to the editor, starting in the tail of the turn. */
-  editor: 4.81,
-  editorDur: 0.45,
+  editor: 3.8,
+  editorDur: 0.4,
   /** End of the pin: everything is held from the last move to here. */
-  end: 5.96,
+  end: 4.5,
 };
 
 /** How long a line of copy takes to fade out (and, after it, in). */
