@@ -26,7 +26,7 @@
  */
 import { STACKED_QUERY } from '../components/showcase/layout';
 import { initialState, type SceneState, type ShowcaseScene } from '../components/showcase/scene/types';
-import { gsap, ScrollTrigger } from './motion';
+import { getLenis, gsap, ScrollTrigger } from './motion';
 import { track } from './preload';
 
 /** Pin length as a multiple of the screen height. */
@@ -46,11 +46,28 @@ const T = {
   end: 9.8,
 };
 
-/** WebGL2 is required by the 3D scene; probed on a throwaway canvas. */
+/**
+ * The copy and the indicator change when the next device is about to be seen,
+ * not before: this long after it starts moving (timeline units), when it
+ * reaches the edge of the frame.
+ */
+const STEP_LEAD = 0.7;
+
+/**
+ * `?debug3d` / `?force3d`: accept a software renderer (headless screenshots,
+ * debugging). Everyone else on one is kept on the 2D rig, see hasWebGL2.
+ */
+const allowSoftwareGL = (): boolean => /[?&](debug3d|force3d)\b/.test(location.search);
+
+/**
+ * WebGL2 is required by the 3D scene; probed on a throwaway canvas. A software
+ * renderer (blocklisted GPU, VM, remote desktop) counts as unavailable: it
+ * would stall the page for seconds, and the 2D rig is a good fallback.
+ */
 function hasWebGL2(): boolean {
   try {
     const probe = document.createElement('canvas');
-    const gl = probe.getContext('webgl2');
+    const gl = probe.getContext('webgl2', { failIfMajorPerformanceCaveat: !allowSoftwareGL() });
     if (!gl) return false;
     gl.getExtension('WEBGL_lose_context')?.loseContext();
     return true;
@@ -130,6 +147,14 @@ export function initShowcase(root: HTMLElement): void {
     );
 
     // 2. Pinned: the MacBook opens, then the iPad, then the iPhone.
+    //
+    // The default pin switches the stage to position: fixed, which Chromium
+    // reports as a layout shift of about 1 each time the pin starts and ends
+    // (nothing moves, but it counts against the page's field CLS). Where Lenis
+    // drives the scroll, from the main thread in the same frame, the pin is a
+    // transform instead. Touch devices scroll natively, off the main thread,
+    // and would see a transform-pinned stage lag behind: they keep the default.
+    const smoothScrolled = !!getLenis() && !matchMedia('(any-pointer: coarse)').matches;
     const tl = gsap.timeline({
       defaults: { ease: 'power2.inOut' },
       onUpdate: invalidate,
@@ -141,11 +166,12 @@ export function initShowcase(root: HTMLElement): void {
           return `+=${stage.offsetHeight * screens}`;
         },
         pin: stage,
+        pinType: smoothScrolled ? 'transform' : 'fixed',
         scrub: 0.8,
         invalidateOnRefresh: true,
         onUpdate: ({ progress }) => {
           const t = progress * T.end;
-          root.dataset.step = t >= T.phone ? '3' : t >= T.ipad + 0.2 ? '2' : '1';
+          root.dataset.step = t >= T.phone ? '3' : t >= T.ipad + STEP_LEAD ? '2' : '1';
         },
       },
     });
@@ -175,8 +201,8 @@ export function initShowcase(root: HTMLElement): void {
       { yPercent: () => settle('--settle-ipad'), duration: T.ipadDur, ease: 'power3.out' },
       T.ipad,
     );
-    tl.to(copy[0], { opacity: 0, yPercent: -30, duration: 0.7 }, T.ipad);
-    tl.to(copy[1], { opacity: 1, yPercent: 0, duration: 0.7 }, T.ipad + 0.35);
+    tl.to(copy[0], { opacity: 0, yPercent: -30, duration: 0.7 }, T.ipad + STEP_LEAD - 0.3);
+    tl.to(copy[1], { opacity: 1, yPercent: 0, duration: 0.7 }, T.ipad + STEP_LEAD);
 
     // iPhone pops in front (3D: rises and turns from its back to its front).
     tl.fromTo(
@@ -244,14 +270,14 @@ export function initShowcase(root: HTMLElement): void {
             height,
             stacked,
             // The MacBook (not the whole group) fills this: its left edge clears
-            // the heading, and its right side bleeds off the screen a little, as in the mockup.
+            // the heading, and its right side bleeds off the screen, as in the mockup.
             area: {
-              left: r.left - s.left + 40 * k,
-              right: width + 56 * k,
+              left: r.left - s.left + 5 * k,
+              right: width + 130 * k,
               top: Math.max(76, ay - 455 * k),
-              bottom: Math.min(height - 20, ay + 185 * k),
+              bottom: Math.min(height - 20, ay + 260 * k),
               alignX: 'right' as const,
-              groundY: ay + 8 * k,
+              groundY: ay + 80 * k,
             },
           };
         };
@@ -260,6 +286,7 @@ export function initShowcase(root: HTMLElement): void {
           canvas,
           urls,
           state: S,
+          allowSoftware: allowSoftwareGL(),
           report: (p) => report(0.05 + p * 0.95),
           measure,
           onContextLost: () => delete root.dataset.scene,

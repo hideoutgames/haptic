@@ -49,6 +49,8 @@ export function createProgressModel(config: ModelConfig) {
   return {
     /** Advance by `dt` seconds. */
     step(dt: number, input: ModelInput): ModelOutput {
+      // A frame timestamp can precede the previous reading: time never runs backwards here.
+      dt = Math.max(0, dt);
       const real = Math.min(1, Math.max(0, input.real)) * 100;
 
       // Creep: follows real progress, then drifts ahead of it ever more slowly.
@@ -59,7 +61,7 @@ export function createProgressModel(config: ModelConfig) {
       const finishing = input.forced || (input.settled && input.elapsed >= config.minMs);
       let target = finishing ? 100 : Math.min(creep, 99);
       // The clock sets the pace in the first moments (and for fully cached loads).
-      if (!input.forced) target = Math.min(target, (input.elapsed / config.minMs) * 100);
+      if (!input.forced) target = Math.min(target, (Math.max(0, input.elapsed) / config.minMs) * 100);
 
       if (target > shown) {
         const k = input.forced ? 14 : finishing ? 9 : 5.5;
@@ -68,6 +70,7 @@ export function createProgressModel(config: ModelConfig) {
         const floor = (finishing ? 55 : 6) * dt;
         shown = Math.min(target, shown + Math.max(eased, floor));
       }
+      shown = Math.min(100, Math.max(0, shown));
 
       const done = finishing && shown >= 99.5;
       if (done) shown = 100;

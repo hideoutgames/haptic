@@ -30,8 +30,12 @@ const MIN_MS_REDUCED = 450;
 const SETTLE_MS = 150;
 /** The ring stays at 100 this long before the reveal starts. */
 const HOLD_MS = 250;
-/** Hard timeout: force 100 and reveal. */
+/** Longest the reveal waits for the GPU to drain the 3D scene's queued work. */
+const GPU_MS = 4000;
+/** Hard timeout from the start of the page load: force 100 and reveal. */
 const HARD_MS = 9000;
+/** ...but never sooner than this after the preloader script starts. */
+const MIN_HARD_MS = 3500;
 /** Reveal fade (keep in sync with --pre-fade in Preloader.astro). */
 const FADE_MS = 900;
 const SEEN_KEY = 'haptic:intro-seen';
@@ -101,8 +105,13 @@ export function initPreloader(root: HTMLElement): void {
     wordmarkSettled = true;
     root.querySelectorAll<HTMLElement>('.wm__ink, .wm__ca').forEach((el) => (el.textContent = el.textContent));
   }
-  const lastLetter = root.querySelector('.wm__ink .ch:last-child');
+  const lastLetter = root.querySelector<HTMLElement>('.wm__ink .ch:last-child');
   lastLetter?.addEventListener('animationend', settleWordmark, { once: true });
+  // The count does not finish before the wordmark has played its intro, however late the display
+  // font (and with it the intro) started. A finished or absent (reduced motion) animation is not
+  // listed any more, so this also holds if the end event came before this script started.
+  const wordmark = root.querySelector<HTMLElement>('.wm');
+  const wordmarkPlayed = () => !wordmark?.getAnimations || wordmark.getAnimations({ subtree: true }).length === 0;
 
   // ---- Start-up work ----------------------------------------------------------
   trackFonts(measure);
@@ -118,18 +127,25 @@ export function initPreloader(root: HTMLElement): void {
   let forced = false;
   let revealed = false;
   let idleSince = 0;
+  let drainStarted = false;
+  let gpuReady = false;
   let holdSince = 0;
   let last = started;
-  let lastAria = -1;
-  let lastLabel = -1;
+  // NaN: the first render always writes.
+  let lastAria = NaN;
+  let lastLabel = NaN;
   let frame = 0;
 
-  const hardTimer = window.setTimeout(() => (forced = true), HARD_MS);
+  // The timeout counts from the start of the page load (this script may arrive late), but
+  // always leaves the count a few seconds to run.
+  const hardIn = Math.max(MIN_HARD_MS, HARD_MS - performance.now());
+  const hardTimer = window.setTimeout(() => (forced = true), hardIn);
   // requestAnimationFrame is paused in background tabs: reveal anyway after a grace period.
-  const stallTimer = window.setTimeout(() => reveal(), HARD_MS + 3000);
+  const stallTimer = window.setTimeout(() => reveal(), hardIn + 3000);
 
   function tick(now: number): void {
-    const dt = Math.min(0.1, (now - last) / 1000);
+    // The frame's timestamp can precede `started`/`last` (it is the frame start): never negative.
+    const dt = Math.max(0, Math.min(0.1, (now - last) / 1000));
     last = now;
     // Lenis is created by another script that may run after this one.
     getLenis()?.stop();
@@ -140,11 +156,19 @@ export function initPreloader(root: HTMLElement): void {
 
     // The count starts with the CSS intro (the inline script stamps data-t0).
     const t0 = Number(root.dataset.t0);
-    const elapsed = Number.isFinite(t0) && t0 > 0 ? now - t0 : 0;
+    const elapsed = Number.isFinite(t0) && t0 > 0 ? Math.max(0, now - t0) : 0;
+
+    const settled = idleSince > 0 && now - idleSince >= SETTLE_MS;
+    // Everything is loaded: wait for the GPU to finish what the 3D scene queued (here, behind
+    // the overlay) rather than stalling the first frames after the reveal.
+    if (settled && !drainStarted) {
+      drainStarted = true;
+      void gpuDrained(GPU_MS).then(() => (gpuReady = true));
+    }
 
     const out = model.step(dt, {
       real: progress(),
-      settled: idleSince > 0 && now - idleSince >= SETTLE_MS,
+      settled: settled && gpuReady && wordmarkPlayed(),
       elapsed,
       forced,
     });
@@ -166,7 +190,7 @@ export function initPreloader(root: HTMLElement): void {
       lastLabel = label;
     }
     // Screen readers get coarse updates only.
-    const coarse = label >= 100 ? 100 : Math.floor(label / 10) * 10;
+    const coarse = label >= 100 ? 100 : Math.min(100, Math.max(0, Math.floor(label / 10) * 10));
     if (bar && coarse !== lastAria) {
       bar.setAttribute('aria-valuenow', String(coarse));
       lastAria = coarse;
@@ -226,6 +250,51 @@ function trackFonts(onLoaded: () => void): void {
     await fonts.ready;
     onLoaded();
   }, 1);
+}
+
+/**
+ * Resolves once the GPU has executed the work already queued for the showcase's
+ * WebGL canvas (shader programs, the warm-up frame, texture uploads), or after
+ * `maxMs`. WebGL calls only queue commands: without this the first frame after
+ * the reveal can block until the queue has drained, which on slow GPUs (or
+ * software GL) takes seconds, in the middle of the hero's load-in. A fence is
+ * polled (WebGL2 does not allow waiting on it), so nothing blocks meanwhile.
+ */
+function gpuDrained(maxMs: number): Promise<void> {
+  const canvas = document.querySelector<HTMLCanvasElement>('[data-scene-canvas]');
+  if (!canvas?.closest('[data-scene="on"]')) return Promise.resolve();
+  try {
+    // Returns the scene's existing context (the canvas is only ever asked for webgl2).
+    const gl = canvas.getContext('webgl2');
+    const fence = gl?.fenceSync(gl.SYNC_GPU_COMMANDS_COMPLETE, 0);
+    if (!gl || !fence) return Promise.resolve();
+    gl.flush();
+    return new Promise((resolve) => {
+      const start = performance.now();
+      const poll = () => {
+        let signalled = true;
+        try {
+          const status = gl.clientWaitSync(fence, 0, 0);
+          signalled = status !== gl.TIMEOUT_EXPIRED;
+        } catch {
+          /* lost context: nothing to wait for */
+        }
+        if (signalled || performance.now() - start > maxMs) {
+          try {
+            gl.deleteSync(fence);
+          } catch {
+            /* ignore */
+          }
+          resolve();
+        } else {
+          window.setTimeout(poll, 30);
+        }
+      };
+      poll();
+    });
+  } catch {
+    return Promise.resolve();
+  }
 }
 
 /** Resolves when the image is loaded and decoded (errors count as done). */

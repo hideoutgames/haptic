@@ -8,7 +8,7 @@
  * Frame: portrait, origin at the middle of the bottom edge, +Y up, front
  * (screen) towards +Z. Standing on `y = 0`.
  */
-import { CircleGeometry, CylinderGeometry, Group, Mesh, MeshBasicMaterial, Color, type Texture } from 'three';
+import { CircleGeometry, Color, CylinderGeometry, Group, Mesh, MeshBasicMaterial, TorusGeometry, type Texture } from 'three';
 import type { Materials } from './materials';
 import { coverUV, flatShape, roundedRectOutline, slab, translateOutline } from './shapes';
 
@@ -105,20 +105,27 @@ export function createIPhone(
   lensGroup.position.set(0, H - ph / 2, lensZ);
   group.add(lensGroup);
   const lensX = -15.5; // the lens sits on the left when seen from behind
-  const ring = new Mesh(new CylinderGeometry(10.8, 10.8, 1.0, 48), m.titanium);
+  const ring = new Mesh(new CylinderGeometry(10.8, 10.8, 1.0, 64), m.titanium);
   ring.rotation.x = Math.PI / 2;
   ring.position.set(lensX, 0, 0.45);
   lensGroup.add(ring);
   const well = new Mesh(new CircleGeometry(9.1, 48), m.lens);
   well.position.set(lensX, 0, 1.0);
   lensGroup.add(well);
+  // Polished bezel around the glass, and a fine ring between glass and well.
+  const bezel = new Mesh(new TorusGeometry(9.5, 0.55, 12, 64), m.titanium);
+  bezel.position.set(lensX, 0, 1.0);
+  lensGroup.add(bezel);
+  const fine = new Mesh(new TorusGeometry(6.35, 0.16, 8, 64), m.titanium);
+  fine.position.set(lensX, 0, 1.04);
+  lensGroup.add(fine);
   const glass = new Mesh(new CircleGeometry(6.2, 40), m.lensCoat);
   glass.position.set(lensX, 0, 1.03);
   lensGroup.add(glass);
   const core = new Mesh(new CircleGeometry(3.1, 32), m.lens);
   core.position.set(lensX, 0, 1.06);
   lensGroup.add(core);
-  const flash = new Mesh(new CircleGeometry(2.1, 24), m.flash);
+  const flash = new Mesh(new CircleGeometry(1.7, 24), m.flash);
   flash.position.set(14, 6.5, 0.05);
   lensGroup.add(flash);
   const mic = new Mesh(new CircleGeometry(0.9, 12), m.blackMatte);

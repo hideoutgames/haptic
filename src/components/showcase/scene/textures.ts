@@ -1,7 +1,7 @@
 /**
  * Textures: the editor screenshots (loaded from the optimised URLs the page
- * hands over) and the few that are drawn in code: the key legends, the macOS
- * menu bar and the soft contact shadow.
+ * hands over) and the few that are drawn in code: the key legends and the
+ * soft contact shadow.
  */
 import { CanvasTexture, ClampToEdgeWrapping, LinearFilter, LinearMipmapLinearFilter, SRGBColorSpace, Texture, TextureLoader, type WebGLRenderer } from 'three';
 
@@ -54,21 +54,32 @@ function finish(tex: CanvasTexture, anisotropy = 4): CanvasTexture {
  * Soft shadow: a blurred rounded box, drawn per pixel from its distance field,
  * so it does not depend on canvas filters (not supported everywhere).
  * Alpha only; the material colours it.
+ *
+ * The alpha is windowed to reach exactly 0 well inside the texture border: a
+ * Gaussian alone is still a few per cent there, which shows as a faint
+ * straight edge of the quad against the backdrop.
  */
-export function createShadowTexture(size = 128): CanvasTexture {
+export function createShadowTexture(size = 256): CanvasTexture {
   const [c, ctx] = canvas(size, size);
   const img = ctx.createImageData(size, size);
   const half = size / 2;
-  const box = size * 0.26; // half extent of the solid core
-  const radius = size * 0.2;
-  const sigma = size * 0.13;
+  const box = size * 0.22; // half extent of the solid core
+  const radius = size * 0.16;
+  const sigma = size * 0.105;
+  // Fully transparent from this distance outside the core (the border is at 0.28).
+  const fadeStart = size * 0.1;
+  const fadeEnd = size * 0.265;
+  const smooth = (a: number, b: number, v: number) => {
+    const t = Math.max(0, Math.min(1, (v - a) / (b - a)));
+    return t * t * (3 - 2 * t);
+  };
   for (let y = 0; y < size; y++) {
     for (let x = 0; x < size; x++) {
       const px = Math.abs(x + 0.5 - half) - (box - radius);
       const py = Math.abs(y + 0.5 - half) - (box - radius);
       const outside = Math.hypot(Math.max(px, 0), Math.max(py, 0)) + Math.min(Math.max(px, py), 0) - radius;
-      // Gaussian falloff outside the core, solid inside.
-      const a = outside <= 0 ? 1 : Math.exp(-(outside * outside) / (2 * sigma * sigma));
+      // Gaussian falloff outside the core, solid inside, faded out before the border.
+      const a = outside <= 0 ? 1 : Math.exp(-(outside * outside) / (2 * sigma * sigma)) * (1 - smooth(fadeStart, fadeEnd, outside));
       const i = (y * size + x) * 4;
       img.data[i] = img.data[i + 1] = img.data[i + 2] = 0;
       img.data[i + 3] = Math.round(a * 255);
@@ -82,57 +93,6 @@ export function createShadowTexture(size = 128): CanvasTexture {
   tex.wrapS = tex.wrapT = ClampToEdgeWrapping;
   tex.needsUpdate = true;
   return tex;
-}
-
-/** A dark macOS-style menu bar (the strip the notch sits in). */
-export function createMenuBarTexture(): CanvasTexture {
-  const w = 2048;
-  const h = 40;
-  const [c, ctx] = canvas(w, h);
-  ctx.fillStyle = '#121214';
-  ctx.fillRect(0, 0, w, h);
-  const font = (weight: number, size: number) => `${weight} ${size}px "SF Pro Text", "Helvetica Neue", Helvetica, Arial, sans-serif`;
-  ctx.textBaseline = 'middle';
-  ctx.fillStyle = 'rgba(255,255,255,0.92)';
-  // Left: app menu.
-  ctx.font = font(700, 21);
-  let x = 56;
-  ctx.fillText('Haptic', x, h / 2 + 1);
-  x += ctx.measureText('Haptic').width + 34;
-  ctx.font = font(500, 21);
-  for (const item of ['File', 'Edit', 'View', 'Project', 'Window', 'Help']) {
-    ctx.fillText(item, x, h / 2 + 1);
-    x += ctx.measureText(item).width + 34;
-  }
-  // Right: status items and the clock.
-  ctx.textAlign = 'right';
-  ctx.fillText('Thu 8 Oct   19:04', w - 56, h / 2 + 1);
-  ctx.textAlign = 'left';
-  const clockLeft = w - 56 - ctx.measureText('Thu 8 Oct   19:04').width - 0;
-  // Battery
-  const bx = clockLeft - 150;
-  ctx.strokeStyle = 'rgba(255,255,255,0.75)';
-  ctx.lineWidth = 2;
-  ctx.strokeRect(bx, h / 2 - 8, 32, 16);
-  ctx.fillStyle = 'rgba(255,255,255,0.75)';
-  ctx.fillRect(bx + 33, h / 2 - 3, 3, 6);
-  ctx.fillRect(bx + 3, h / 2 - 5, 20, 10);
-  // Wi-Fi
-  ctx.strokeStyle = 'rgba(255,255,255,0.8)';
-  ctx.lineWidth = 2.4;
-  const wx = bx - 56;
-  for (let i = 1; i <= 3; i++) {
-    ctx.beginPath();
-    ctx.arc(wx, h / 2 + 9, i * 6.5, -Math.PI * 0.8, -Math.PI * 0.2);
-    ctx.stroke();
-  }
-  ctx.fillStyle = 'rgba(255,255,255,0.8)';
-  ctx.beginPath();
-  ctx.arc(wx, h / 2 + 9, 1.8, 0, Math.PI * 2);
-  ctx.fill();
-  const tex = new CanvasTexture(c);
-  tex.minFilter = LinearMipmapLinearFilter;
-  return finish(tex, 8);
 }
 
 export interface Legend {

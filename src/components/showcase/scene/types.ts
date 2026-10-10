@@ -69,6 +69,8 @@ export interface SceneOptions {
   report?: (progress: number) => void;
   /** The state object the scroll timeline scrubs (shared, so it can exist before the scene does). */
   state?: SceneState;
+  /** Debugging: accept a software WebGL renderer (otherwise creating the scene fails on one). */
+  allowSoftware?: boolean;
   /** CSS size of the canvas and where the finished composition should land in it. */
   measure: () => { width: number; height: number; stacked: boolean; area: Area };
   onContextLost?: () => void;

@@ -60,22 +60,33 @@ const word = LETTERS.map((ch, i) => ({ ch, i }));
     // The hero title is in its final state under the overlay (see the global rules below).
     d.setAttribute('data-handoff', '');
 
-    // Start the intro once the display font is ready, so it is not spent on invisible text.
+    // The ring and the count start (`is-go`) once the display font is ready, or after 0.9 s so
+    // a slow connection still sees the page is alive. The wordmark's letters (`is-type`) wait
+    // for the font itself: it is declared `font-display: block`, so until it arrives the
+    // glyphs are invisible and an intro played meanwhile would be spent on nothing. Past the
+    // end of the browser's block period (3 s) the fallback face shows, so they start anyway.
     var started = false;
+    var typed = false;
     function go() {
       if (started) return;
       started = true;
       p.setAttribute('data-t0', String(performance.now()));
       p.classList.add('is-go');
     }
-    var fallback = setTimeout(go, 900);
-    try {
-      document.fonts.load('172px "Block Berthold"', 'HAPTIC').then(
-        function () { clearTimeout(fallback); go(); },
-        go
-      );
-    } catch (e) {
+    function type() {
+      if (typed) return;
+      typed = true;
+      clearTimeout(goTimer);
+      clearTimeout(typeTimer);
       go();
+      p.classList.add('is-type');
+    }
+    var goTimer = setTimeout(go, 900);
+    var typeTimer = setTimeout(type, 3000);
+    try {
+      document.fonts.load('172px "Block Berthold"', 'HAPTIC').then(type, type);
+    } catch (e) {
+      type();
     }
 
     // Fail-safe if the bundled script never starts (blocked or failed chunk):
@@ -262,9 +273,9 @@ const word = LETTERS.map((ch, i) => ({ ch, i }));
     animation: wm-rise 0.85s cubic-bezier(0.16, 1, 0.3, 1) calc(var(--i) * 70ms) backwards paused;
   }
 
-  /* The intro starts when the inline script has the font ready. */
-  .pre.is-go .ch,
-  .pre.is-go .wm__ca,
+  /* The ring starts with `is-go`, the wordmark with `is-type` (the font is ready); see the inline script. */
+  .pre.is-type .ch,
+  .pre.is-type .wm__ca,
   .pre.is-go .ring {
     animation-play-state: running;
   }
@@ -361,15 +372,15 @@ const word = LETTERS.map((ch, i) => ({ ch, i }));
 
   /* ---- Reduced motion: wordmark shown at once, ring still counts, quick fade ---- */
   @media (prefers-reduced-motion: reduce) {
+    .ch,
+    .wm__ca,
+    .ring {
+      animation: none;
+    }
     .pre.is-revealing {
       transition-duration: 0.3s !important;
     }
-    .pre.is-detached .wm {
-    opacity: 0;
-    transition: opacity 0.25s ease-out;
-  }
-
-  .pre.is-revealing .ring {
+    .pre.is-revealing .ring {
       transition-duration: 0.2s !important;
     }
   }

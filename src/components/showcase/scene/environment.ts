@@ -33,11 +33,11 @@ import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js';
 
 /** Colour of the dusk dome by elevation (-1 floor … +1 zenith): [elevation, colour, HDR gain]. */
 const DOME: Array<[number, string, number]> = [
-  [-1, '#0e0604', 1],
-  [-0.35, '#2c1106', 1],
-  [-0.08, '#8a3812', 1],
-  [0.015, '#ff7a30', 2],
-  [0.07, '#4a3d45', 0.5],
+  [-1, '#0b0a0a', 1],
+  [-0.35, '#151312', 1],
+  [-0.08, '#35302f', 1],
+  [0.015, '#ff7a30', 1.1],
+  [0.07, '#444a4c', 0.8],
   [0.2, '#25364f', 0.55],
   [0.55, '#101b2e', 0.9],
   [1, '#06090f', 1],
@@ -108,10 +108,10 @@ export function createEnvironment(renderer: WebGLRenderer): Texture {
   // Soft boxes: key (warm, upper left in front), cool rim strip behind on the
   // right, a broad overhead strip, a low orange kicker and a faint front fill
   // so glass facing the viewer mirrors a dim room rather than nothing.
-  env.add(softBox('#fff1e0', 6, [-0.55, 0.62, 0.55], [34, 22]));
+  env.add(softBox('#fff1e0', 3.5, [-0.55, 0.62, 0.55], [30, 18]));
   env.add(softBox('#7fb2ff', 7, [0.85, 0.32, -0.45], [7, 34]));
   env.add(softBox('#e8f0ff', 3.5, [0.1, 0.98, 0.1], [10, 40]));
-  env.add(softBox('#ff7a2a', 2.6, [0.55, -0.12, 0.82], [28, 6]));
+  env.add(softBox('#ff7a2a', 1.2, [0.55, -0.12, 0.82], [28, 6]));
   env.add(softBox('#b9c2d6', 0.1, [0.0, 0.22, 1], [60, 28], 45));
 
   const pmrem = new PMREMGenerator(renderer);
@@ -135,7 +135,7 @@ export function createLights(scene: Scene): Light[] {
   const rim = new DirectionalLight('#6aa0ff', 1.3);
   rim.position.set(800, 650, -900);
   // Bounce: orange from below and in front, like light off the glowing horizon.
-  const bounce = new DirectionalLight('#ff6a24', 0.7);
+  const bounce = new DirectionalLight('#ff6a24', 0.35);
   bounce.position.set(250, -400, 700);
   const fill = new HemisphereLight('#8a8f9a', '#8a3d1c', 0.1);
 

@@ -7,36 +7,90 @@
  */
 export const SKY_HEIGHT = 848;
 
+type Stop = readonly [y: number, r: number, g: number, b: number];
+
 /**
  * Colour of the photo's outer columns as [y, r, g, b], after the CSS filter on
  * the image. Left: sky down to the foothills at y ≈ 600. Right: the mountain
- * skyline at y ≈ 350. Both are softened into a gradual fall-off, since the
- * fill has no silhouette to continue.
+ * skyline at y ≈ 350. The fill has no silhouette to continue, so both are
+ * smoothed (see `smooth`) into a gradual fall-off toward the horizon.
  */
-const EDGE_LEFT = [
+const EDGE_LEFT: readonly Stop[] = [
   [0, 7, 4, 0], [156, 8, 5, 1], [254, 7, 7, 7], [324, 3, 9, 14], [411, 0, 15, 29],
   [514, 1, 24, 48], [566, 3, 29, 53], [610, 4, 26, 48], [650, 4, 16, 24],
   [700, 7, 6, 3], [740, 7, 5, 0], [847, 8, 5, 0],
-] as const;
+];
 
-const EDGE_RIGHT = [
+const EDGE_RIGHT: readonly Stop[] = [
   [0, 7, 4, 0], [78, 7, 6, 3], [166, 6, 8, 9], [209, 3, 9, 14], [334, 1, 17, 30],
   [380, 2, 14, 24], [430, 4, 9, 10], [480, 7, 5, 1], [520, 7, 5, 0], [847, 7, 5, 0],
-] as const;
+];
 
-function edgeGradient(stops: readonly (readonly [number, number, number, number])[]): string {
+/**
+ * What the sky settles into far from the photo: the dark warm black of its top
+ * and bottom, with none of the horizon glow (that is blended in by distance, see
+ * the .sky-half rules in Hero.astro).
+ */
+const EDGE_FAR: readonly Stop[] = [[0, 7, 4, 0], [156, 8, 5, 1], [847, 7, 5, 0]];
+
+/** Colour at depth `y`, linear between the stops. */
+function colorAt(stops: readonly Stop[], y: number): [number, number, number] {
+  if (y <= stops[0][0]) return [stops[0][1], stops[0][2], stops[0][3]];
+  for (let i = 1; i < stops.length; i++) {
+    const [y1, r1, g1, b1] = stops[i];
+    if (y <= y1) {
+      const [y0, r0, g0, b0] = stops[i - 1];
+      const t = (y - y0) / (y1 - y0);
+      return [r0 + (r1 - r0) * t, g0 + (g1 - g0) * t, b0 + (b1 - b0) * t];
+    }
+  }
+  const last = stops[stops.length - 1];
+  return [last[1], last[2], last[3]];
+}
+
+/** Gaussian blur of the vertical colour profile (σ in photo px), resampled to a stop every `step`. */
+function smooth(stops: readonly Stop[], sigma: number, step = 24): Stop[] {
+  const out: Stop[] = [];
+  const radius = Math.ceil(sigma * 3);
+  for (let y = 0; y <= SKY_HEIGHT - 1 + step / 2; y += step) {
+    const yy = Math.min(y, SKY_HEIGHT - 1);
+    let r = 0;
+    let g = 0;
+    let b = 0;
+    let weight = 0;
+    for (let d = -radius; d <= radius; d += 4) {
+      const w = Math.exp(-(d * d) / (2 * sigma * sigma));
+      const c = colorAt(stops, Math.min(SKY_HEIGHT - 1, Math.max(0, yy + d)));
+      r += c[0] * w;
+      g += c[1] * w;
+      b += c[2] * w;
+      weight += w;
+    }
+    out.push([yy, Math.round(r / weight), Math.round(g / weight), Math.round(b / weight)]);
+  }
+  return out;
+}
+
+function edgeGradient(stops: readonly Stop[]): string {
   const list = stops.map(([y, r, g, b]) => `rgb(${r} ${g} ${b}) ${((y / SKY_HEIGHT) * 100).toFixed(1)}%`);
   return `linear-gradient(to bottom, ${list.join(', ')})`;
 }
 
-/** Vertical gradients that continue the photo's left and right edge outwards. */
-export const skyEdges = { left: edgeGradient(EDGE_LEFT), right: edgeGradient(EDGE_RIGHT) };
+/**
+ * Vertical gradients that continue the photo's left and right edge outwards, and
+ * the plain dark sky they fade into with distance from the photo.
+ */
+export const skyEdges = {
+  left: edgeGradient(smooth(EDGE_LEFT, 26)),
+  right: edgeGradient(smooth(EDGE_RIGHT, 26)),
+  far: edgeGradient(EDGE_FAR),
+};
 
 /* ---- Starfield ------------------------------------------------------------ */
 
 const TILE_WIDTH = 900;
-/** Stars stop here; the horizon mask in Hero.astro hides everything below. */
-const STAR_REACH = 640;
+/** Stars stop here; the horizon masks in Hero.astro fade them out before. */
+const STAR_REACH = 720;
 
 interface StarClass {
   /** Stars per 10 000 px² at the top, plus the extra per px of depth (the photo gets denser toward the horizon). */

@@ -23,6 +23,8 @@ export interface Pose {
   /** Radians leaning back (top away from the viewer). */
   pitch: number;
   roll?: number;
+  /** Size of the device relative to life (1 if omitted). */
+  scale?: number;
 }
 
 export interface Layout {
@@ -58,7 +60,7 @@ export const LAYOUTS: Record<Layout['id'], Layout> = {
     elevation: deg(10),
     azimuth: 0,
     mac: { x: 0, z: 0, yaw: deg(0), open: 105 },
-    ipad: { x: -58, z: 215, yaw: deg(5), pitch: deg(10) },
+    ipad: { x: -110, z: 205, yaw: deg(5), pitch: deg(10), scale: 0.76 },
     phone: { x: -178, z: 335, yaw: deg(9), pitch: deg(7) },
     entrance: { shiftX: 85, yaw: deg(-38), scale: 1 },
     settleZ: 0,
@@ -100,6 +102,8 @@ export interface Placement {
 }
 
 const MAC_RISE = 190;
+/** How far to the right of its resting place (mm) the iPad starts its flight. */
+const IPAD_REACH = 330;
 
 function place(g: Group, x: number, y: number, z: number, yaw: number, pitch: number, roll = 0) {
   g.position.set(x, y, z);
@@ -132,13 +136,16 @@ export function applyState(models: Models, s: SceneState, L: Layout): Placement 
     const f = L.ipad;
     const t = clamp01(p);
     // The depth leads the sideways travel, so it clears the MacBook's base.
-    const x = lerp(f.x + 520, f.x, t * t * (3 - 2 * t));
+    // The timeline already eases `t`, so the sideways travel is linear in it: the
+    // iPad is in frame soon after it starts to move, as the copy changes.
+    const x = lerp(f.x + IPAD_REACH, f.x, t);
     const z = lerp(-240, f.z, 1 - Math.pow(1 - t, 3));
     const y = lerp(80, 0, smooth(0, 1, t)) + 55 * Math.sin(Math.PI * Math.min(1, t * 1.15));
     const yaw = lerp(deg(-64), f.yaw, smooth(0, 1, t));
     const pitch = lerp(deg(24), f.pitch, smooth(0, 1, t));
     const roll = lerp(deg(-10), 0, smooth(0, 1, t));
     place(ipad.group, x, y, z, yaw, pitch, roll);
+    ipad.group.scale.setScalar(f.scale ?? 1);
   }
 
   // ---- iPhone: rises in front, turning from its back to its front ----

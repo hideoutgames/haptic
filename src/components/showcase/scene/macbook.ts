@@ -22,7 +22,6 @@ import {
 import type { Materials } from './materials';
 import { createKeyboard } from './keyboard';
 import { coverUV, flatShape, roundedRectOutline, slab, translateOutline } from './shapes';
-import { createMenuBarTexture } from './textures';
 
 export const MAC = {
   width: 355.7,
@@ -31,7 +30,6 @@ export const MAC = {
   baseHeight: 10.7,
   lidThickness: 5.2,
   display: { w: 345.6, h: 223.4 },
-  menuBar: 7.4,
   notch: { w: 36.7, h: 6.4 },
   cornerRadius: 12,
 } as const;
@@ -161,43 +159,28 @@ export function createMacBook(m: Materials, screen: Texture, tabletSize: { w: nu
   const displayTop = D - 4.6;
   const dispW = MAC.display.w;
   const dispH = MAC.display.h;
-  const bar = MAC.menuBar;
-  const dispCentreY = displayTop - dispH / 2;
 
-  // Menu bar strip (square bottom, rounded top corners like the display).
-  const stripOutline = translateOutline(roundedRectOutline(dispW, bar, [4.2, 4.2, 0, 0], 8), 0, displayTop - bar / 2);
-  const barTex = createMenuBarTexture();
-  const barMat = new MeshBasicMaterial({ map: barTex, toneMapped: false });
-  const strip = new Mesh(
-    flatShape({ outline: stripOutline, uv: (x, y) => [x / dispW + 0.5, (y - (displayTop - bar)) / bar] }),
-    barMat,
-  );
-  strip.position.z = faceZ + 0.05;
-  lid.add(strip);
-
-  // The editor, below the menu bar. The iOS status bar is cropped off.
-  const contentH = dispH - bar;
-  const contentOutline = translateOutline(roundedRectOutline(dispW, contentH, 0, 1), 0, displayTop - bar - contentH / 2);
+  // The editor screenshot, as it is: top-aligned and as wide as the display
+  // (the part that does not fit is cut off at the bottom), so its own status
+  // bar sits where the macOS menu bar would. Rounded top corners, square bottom.
+  const contentOutline = translateOutline(roundedRectOutline(dispW, dispH, [4.2, 4.2, 0, 0], 8), 0, displayTop - dispH / 2);
   const contentMat = new MeshBasicMaterial({ map: screen, toneMapped: false });
   const content = new Mesh(
     flatShape({
       outline: contentOutline,
       uv: coverUV({
         width: dispW,
-        height: contentH,
+        height: dispH,
         texW: tabletSize.w,
         texH: tabletSize.h,
-        cropTop: 62,
-        cropBottom: 0,
         anchorY: 0,
-        centerY: displayTop - bar - contentH / 2,
+        centerY: displayTop - dispH / 2,
       }),
     }),
     contentMat,
   );
   content.position.z = faceZ + 0.06;
   lid.add(content);
-  void dispCentreY;
 
   // The notch: a black tab hanging from the top edge, with the camera in it.
   const { w: nW, h: nH } = MAC.notch;
@@ -212,18 +195,16 @@ export function createMacBook(m: Materials, screen: Texture, tabletSize: { w: nu
   // Reflection layer over the whole glass.
   const glare = new Mesh(
     flatShape({ outline: translateOutline(roundedRectOutline(W - 2.6, D - 2.6, MAC.cornerRadius - 1.3, 12), 0, D / 2), uv: () => [0, 0] }),
-    m.glassReflection,
+    m.glassReflectionMac,
   );
   glare.position.z = faceZ + 0.2;
   glare.renderOrder = 3;
   lid.add(glare);
 
-  const stripColor = new Color();
+  const tint = new Color();
   const setScreen = (power: number) => {
     // Display fades up from black; slightly non-linear so the first moments are dark.
-    const v = Math.pow(Math.max(0, Math.min(1, power)), 1.4);
-    contentMat.color.copy(stripColor.setScalar(v));
-    barMat.color.copy(stripColor.setScalar(v));
+    contentMat.color.copy(tint.setScalar(Math.pow(Math.max(0, Math.min(1, power)), 1.4)));
   };
   setScreen(0);
 
@@ -233,5 +214,5 @@ export function createMacBook(m: Materials, screen: Texture, tabletSize: { w: nu
   };
   setOpen(0);
 
-  return { group, lid, setOpen, setScreen, textures: [barTex] };
+  return { group, lid, setOpen, setScreen, textures: [] };
 }
