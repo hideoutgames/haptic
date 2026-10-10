@@ -31,8 +31,6 @@ export interface Pose {
   /** Radians leaning back (top away from the viewer). */
   pitch: number;
   roll?: number;
-  /** Size of the device relative to life (1 if omitted). */
-  scale?: number;
 }
 
 export interface Layout {
@@ -41,17 +39,28 @@ export interface Layout {
   /** Camera elevation above the ground plane, radians. */
   elevation: number;
   azimuth: number;
+  /**
+   * Where the camera looks (mm), if it should not follow the middle of the
+   * devices: the MacBook, the anchor, then looks the same wherever the iPad
+   * and iPhone stand. (Desktop: the middle of the composition the MacBook's
+   * framing was tuned with.)
+   */
+  focus?: { x: number; y: number; z: number };
   mac: { x: number; z: number; yaw: number; open: number };
   ipad: Pose;
   phone: Pose;
   /** While the MacBook is shut and turned: how far left it sits (mm), its start yaw and size. */
   entrance: { shiftX: number; yaw: number; scale: number };
   /**
-   * The iPad's glide: where it starts relative to its resting place (mm; it
-   * starts to the right, a little behind and slightly lifted), how far it
-   * bulges towards the camera on the way (the arc), and how far it turns (rad).
+   * How the iPad arrives: it slides in on its stand along the ground, from the
+   * left of the picture (so it never crosses the MacBook), and settles. It
+   * starts `dx` (mm) left of its resting place, though the scene replaces that
+   * with the distance that starts it just outside the canvas, which depends on
+   * the screen; `dz` (mm) nearer the viewer, so it is pushed back into place;
+   * and turned `yaw` (rad) further towards the way it is going than at rest,
+   * so it turns to face the front as it settles.
    */
-  glide: { dx: number; dz: number; lift: number; bulge: number; yaw: number };
+  arrival: { dx: number; dz: number; yaw: number };
   /**
    * Stacked only: the whole group sits this far towards the camera (mm) while
    * the MacBook is alone, so it is centred; it settles back as the others join.
@@ -73,11 +82,18 @@ export const LAYOUTS: Record<Layout['id'], Layout> = {
     fov: 24,
     elevation: deg(10),
     azimuth: 0,
+    focus: { x: -18, y: 126, z: 77 },
     mac: { x: 0, z: 0, yaw: deg(0), open: LID_OPEN_ANGLE },
-    ipad: { x: -110, z: 205, yaw: deg(5), pitch: deg(10), scale: 0.76 },
-    phone: { x: -178, z: 335, yaw: deg(9), pitch: deg(7) },
+    // The iPad stands in the open lower left, to the left of the MacBook and in
+    // front of it, turned a little in towards it. A true-size iPad standing
+    // upright there would reach up into the copy, so it leans back on its
+    // stand, and it stands far enough forward (lower on screen) that its top
+    // edge stays well below the copy. The iPhone stands in front of the
+    // MacBook's left edge, beside it, covering only a corner of the display.
+    ipad: { x: -328, z: 238, yaw: deg(5), pitch: deg(54) },
+    phone: { x: -124, z: 340, yaw: deg(4), pitch: deg(6) },
     entrance: { shiftX: 85, yaw: deg(-38), scale: 1 },
-    glide: { dx: 330, dz: -40, lift: 36, bulge: 34, yaw: deg(-18) },
+    arrival: { dx: 420, dz: 60, yaw: deg(17) },
     settleZ: 0,
   },
   stacked: {
@@ -86,10 +102,12 @@ export const LAYOUTS: Record<Layout['id'], Layout> = {
     elevation: deg(25),
     azimuth: 0,
     mac: { x: 0, z: -20, yaw: deg(0), open: LID_OPEN_ANGLE },
-    ipad: { x: -62, z: 270, yaw: deg(4), pitch: deg(16) },
+    // In front of the MacBook's keyboard, below its display (a strip of the
+    // keyboard still shows above it), leaning back on its stand.
+    ipad: { x: -62, z: 310, yaw: deg(4), pitch: deg(46) },
     phone: { x: 112, z: 360, yaw: deg(-7), pitch: deg(12) },
     entrance: { shiftX: 0, yaw: deg(-27), scale: 0.84 },
-    glide: { dx: 385, dz: -40, lift: 36, bulge: 30, yaw: deg(-18) },
+    arrival: { dx: 340, dz: 40, yaw: deg(17) },
     settleZ: 150,
   },
 };
@@ -125,6 +143,12 @@ export interface Placement {
  */
 const MAC_RISE = 60;
 const PHONE_RISE = 200;
+/**
+ * The iPad's shadows fade in over this first part of its slide: their soft
+ * edges reach a little past it, and would otherwise show at the edge of the
+ * canvas a moment before the iPad does.
+ */
+const IPAD_SHADOW_IN = 0.1;
 /** The camera starts this much farther away (fraction of the framed distance) and dollies in. */
 export const DOLLY = 0.035;
 
@@ -141,6 +165,16 @@ function place(g: Group, x: number, y: number, z: number, yaw: number, pitch: nu
   g.rotation.set(-pitch, yaw, 0, 'XYZ');
 }
 
+/**
+ * A device standing on its stand leans about its own X axis and turns about the
+ * world's vertical (not about its tilted one), so its bottom edge stays level
+ * on the ground and the stand turns with it.
+ */
+function placeStanding(g: Group, x: number, y: number, z: number, yaw: number, pitch: number) {
+  g.position.set(x, y, z);
+  g.rotation.set(-pitch, yaw, 0, 'YXZ');
+}
+
 /** Offset of the whole group along Z for the current state (stacked layout). */
 export function worldShift(s: SceneState, L: Layout): number {
   return L.settleZ * (1 - Math.max(s.ipad, s.open * 0.25));
@@ -151,7 +185,11 @@ export function dollyFactor(s: SceneState): number {
   return 1 + DOLLY * (1 - clamp01(s.dolly));
 }
 
-export function applyState(models: Models, s: SceneState, L: Layout): Placement {
+/**
+ * `arrivalDx` is how far left of its resting place the iPad starts (mm): the
+ * scene passes the distance that starts it just outside the canvas.
+ */
+export function applyState(models: Models, s: SceneState, L: Layout, arrivalDx: number = L.arrival.dx): Placement {
   const { mac, ipad, phone } = models;
 
   // ---- MacBook: rises shut and turned, turns to face front, then opens ----
@@ -170,18 +208,19 @@ export function applyState(models: Models, s: SceneState, L: Layout): Placement 
   // The display lights up once the lid is past SCREEN_ON_ANGLE, as the timeline reaches it.
   mac.setScreen(clamp01(s.screen) * clamp01((lid - SCREEN_ON_ANGLE * 0.92) / (SCREEN_ON_ANGLE * 0.08)));
 
-  // ---- iPad: glides in from the right on a shallow arc, turning a few degrees ----
+  // ---- iPad: slides in on its stand along the ground from the left, turning to face the front ----
   const e = clamp01(s.ipad);
+  const away = 1 - e;
   ipad.group.visible = e > 0.001;
-  {
-    const f = L.ipad;
-    const g = L.glide;
-    const x = f.x + g.dx * (1 - e);
-    const z = f.z + g.dz * (1 - e) + g.bulge * Math.sin(Math.PI * e);
-    const y = g.lift * (1 - e);
-    place(ipad.group, x, y, z, f.yaw + g.yaw * (1 - e), f.pitch);
-    ipad.group.scale.setScalar(f.scale ?? 1);
-  }
+  ipad.setLean(L.ipad.pitch);
+  placeStanding(
+    ipad.group,
+    L.ipad.x - arrivalDx * away,
+    ipad.restHeight,
+    L.ipad.z + L.arrival.dz * away,
+    L.ipad.yaw + L.arrival.yaw * away,
+    L.ipad.pitch,
+  );
 
   // ---- iPhone: rises into place with its back to the viewer, then turns to face front ----
   const q = clamp01(s.phone);
@@ -202,8 +241,8 @@ export function applyState(models: Models, s: SceneState, L: Layout): Placement 
   p.ipad.x = ipad.group.position.x;
   p.ipad.z = ipad.group.position.z;
   p.ipad.yaw = ipad.group.rotation.y;
-  p.ipad.strength = ipad.group.visible ? 1 - smooth(0, 200, ipad.group.position.y) : 0;
-  p.ipad.lift = ipad.group.position.y;
+  p.ipad.strength = ipad.group.visible ? clamp01(e / IPAD_SHADOW_IN) : 0;
+  p.ipad.lift = 0;
 
   p.phone.x = L.phone.x;
   p.phone.z = L.phone.z;

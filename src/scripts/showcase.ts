@@ -6,8 +6,9 @@
  *   before the pin  the MacBook arrives with the scrolling page, shut, and
  *                    turns gently from three-quarter view to face front
  *   0.05 – 1.05      the lid opens; the display lights once it is past 70 degrees
- *   1.22 – 1.45      hold: "Mac"
- *   1.45 – 2.25      the iPad glides in from the right on a shallow arc
+ *   1.16 – 1.35      hold: "Mac"
+ *   1.35 – 2.25      the iPad slides in on its stand from just outside the left
+ *                    edge, turning to face the front as it settles
  *   2.25 – 2.50      hold: "iPad"
  *   2.50 – 3.00      the iPhone rises into place, back to the viewer
  *   2.85 – 3.95      it turns slowly to face front, showing Projects
@@ -63,9 +64,9 @@ const T = {
   open: 0.05,
   openDur: 1.0,
   screenDur: 0.5,
-  /** The iPad glides in. */
-  ipad: 1.45,
-  ipadDur: 0.8,
+  /** The iPad slides in from the left and settles on its stand. */
+  ipad: 1.35,
+  ipadDur: 0.9,
   /** The iPhone rises, then turns from its back to its front. */
   phone: 2.5,
   phoneDur: 0.5,
@@ -113,6 +114,18 @@ export function initShowcase(root: HTMLElement): void {
   const copy = gsap.utils.toArray<HTMLElement>('[data-copy]', root);
   if (!stage || !group || !mac || !ipad || !iphone || !fill || copy.length < 3) return;
 
+  /**
+   * The xPercent that moves a device of the 2D rig just past the left edge of
+   * the stage (with a little to spare for the scale and turn it starts with),
+   * measured without its transforms, which offsets ignore, so a tween can
+   * start from it again on every refresh.
+   */
+  const offStageLeft = (el: HTMLElement) => {
+    let left = 0;
+    for (let e: HTMLElement | null = el; e && e !== stage; e = e.offsetParent as HTMLElement | null) left += e.offsetLeft;
+    return -((left + el.offsetWidth) / el.offsetWidth) * 100 - 6;
+  };
+
   const mm = gsap.matchMedia();
 
   mm.add('(prefers-reduced-motion: no-preference)', () => {
@@ -150,7 +163,7 @@ export function initShowcase(root: HTMLElement): void {
     enter.fromTo(S, { rise: 0 }, { rise: 1, duration: 1 }, 0);
     enter.fromTo(S, { turn: 0 }, { turn: 1, duration: 1 }, 0);
 
-    // 2. Pinned: the lid opens, the iPad glides in, the iPhone rises and turns.
+    // 2. Pinned: the lid opens, the iPad slides in, the iPhone rises and turns.
     //
     // The default pin switches the stage to position: fixed, which Chromium
     // reports as a layout shift of about 1 each time the pin starts and ends
@@ -197,14 +210,17 @@ export function initShowcase(root: HTMLElement): void {
     tl.fromTo(S, { open: 0 }, { open: 1, duration: T.openDur }, T.open);
     tl.fromTo(S, { screen: 0 }, { screen: 1, duration: T.screenDur }, T.open + T.openDur * lidAtScreenOn);
 
-    // The iPad glides in from the right on a shallow arc and settles over the MacBook.
+    // The iPad slides in from just outside the left edge of the stage, a little
+    // nearer the viewer and turned towards the way it is going, and settles,
+    // turning to face the front (the 3D scene does the same with the state
+    // below). It starts out of sight, so it is shown at once.
     tl.fromTo(
       ipad,
-      { xPercent: 36, yPercent: 24, scale: 0.92, rotationY: -16, transformPerspective: 1800 },
+      { xPercent: () => offStageLeft(ipad), yPercent: 6, scale: 1.04, rotationY: 17, transformPerspective: 1800 },
       { xPercent: 0, yPercent: 0, scale: 1, rotationY: 0, duration: T.ipadDur },
       T.ipad,
     );
-    tl.fromTo(ipad, { opacity: 0 }, { opacity: 1, duration: T.ipadDur * 0.4 }, T.ipad);
+    tl.fromTo(ipad, { opacity: 0 }, { opacity: 1, duration: T.ipadDur * 0.05 }, T.ipad);
     tl.fromTo(S, { ipad: 0 }, { ipad: 1, duration: T.ipadDur }, T.ipad);
     // Stacked layout: the group of devices (centred under the copy) follows
     // as they join. The CSS holds the offsets; on desktop they are 0.

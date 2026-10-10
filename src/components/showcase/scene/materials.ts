@@ -125,8 +125,9 @@ export function createMaterials(lite = false) {
    * added to black it would lift the screens into a grey haze, and a glass that
    * faces a bright patch of the environment (the warm horizon, the key light)
    * would turn cream. Only the highlights show, and never above the cap. The
-   * MacBook lid faces the horizon band at an angle that mirrors it much more
-   * than the iPad and iPhone do, so it gets a weaker layer of its own.
+   * MacBook lid, and the iPad leaning back on its stand, face the horizon band
+   * at an angle that mirrors it much more than the upright iPhone does, so they
+   * get a weaker layer of their own.
    */
   const glare = (opacity: number) => {
     const material = new MeshStandardMaterial({

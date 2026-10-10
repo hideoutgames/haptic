@@ -301,7 +301,10 @@ const sizesFor = (stacked: string, side: string) => `${STACKED_QUERY} ${stacked}
     transform: scaleX(0);
   }
 
-  /* ---- Devices: the MacBook frame is the rig; the others sit inside it ---- */
+  /* ---- Devices: the MacBook frame is the rig; the others are placed from it ----
+     As in the 3D scene: the iPad stands in the open lower left, below the copy
+     and clear of the MacBook's display, and the iPhone in front of the
+     MacBook's left edge, beside it. */
   .rig {
     position: absolute;
     z-index: var(--z-media);
@@ -323,15 +326,15 @@ const sizesFor = (stacked: string, side: string) => `${STACKED_QUERY} ${stacked}
   }
 
   .rig :global(.device--ipad) {
-    left: 11%;
-    top: 48%;
-    width: 56.7%;
+    left: -61.5%;
+    top: 82%;
+    width: 54%;
     z-index: 2;
   }
 
   .rig :global(.device--iphone) {
     left: -3.05%;
-    top: 34.2%;
+    top: 70%;
     width: 25.65%;
     z-index: 3;
   }

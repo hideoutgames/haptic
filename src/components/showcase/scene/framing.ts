@@ -35,6 +35,8 @@ export function frameCamera(
     points: Vector3[];
     /** The part whose width fills the area (defaults to all points). */
     widthPoints?: Vector3[];
+    /** Where the camera looks (defaults to the middle of all points). */
+    focus?: Vector3;
     ground: Vector3;
     area: Area;
   },
@@ -48,7 +50,10 @@ export function frameCamera(
   camera.far = 9000;
   camera.clearViewOffset();
 
-  const centre = new Box3().setFromPoints(points).getCenter(new Vector3());
+  // The camera looks at the layout's focus point if it has one (so the MacBook,
+  // the anchor, is seen the same however the other devices are arranged), else
+  // at the middle of the whole composition.
+  const centre = opts.focus ? opts.focus.clone() : new Box3().setFromPoints(points).getCenter(new Vector3());
   const dir = new Vector3(
     Math.sin(opts.azimuth) * Math.cos(opts.elevation),
     Math.sin(opts.elevation),

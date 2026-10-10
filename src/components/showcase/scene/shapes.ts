@@ -78,6 +78,43 @@ export function translateOutline(pts: Vector2[], x: number, y: number): Vector2[
   return pts.map((p) => new Vector2(p.x + x, p.y + y));
 }
 
+/**
+ * Closed outline through `corners` (counter-clockwise) with every corner
+ * rounded by a circular arc of radius `r`, convex or not: a profile such as
+ * the iPad stand's rail, for `slab`.
+ */
+export function filletedOutline(corners: Array<[number, number]>, r: number, segments = 3): Vector2[] {
+  const out: Vector2[] = [];
+  const n = corners.length;
+  for (let i = 0; i < n; i++) {
+    const [px, py] = corners[i];
+    const [ax, ay] = corners[(i + n - 1) % n];
+    const [bx, by] = corners[(i + 1) % n];
+    const la = Math.hypot(ax - px, ay - py);
+    const lb = Math.hypot(bx - px, by - py);
+    const ux = (ax - px) / la;
+    const uy = (ay - py) / la;
+    const vx = (bx - px) / lb;
+    const vy = (by - py) / lb;
+    // Half the angle between the two edges, the tangent points and the arc's centre.
+    const half = Math.acos(Math.max(-1, Math.min(1, ux * vx + uy * vy))) / 2;
+    const d = r / Math.tan(half);
+    const bl = Math.hypot(ux + vx, uy + vy);
+    const cx = px + ((ux + vx) / bl) * (r / Math.sin(half));
+    const cy = py + ((uy + vy) / bl) * (r / Math.sin(half));
+    const a0 = Math.atan2(py + uy * d - cy, px + ux * d - cx);
+    let a1 = Math.atan2(py + vy * d - cy, px + vx * d - cx);
+    // The short way round, from the incoming edge to the outgoing one.
+    if (a1 - a0 > Math.PI) a1 -= Math.PI * 2;
+    if (a0 - a1 > Math.PI) a1 += Math.PI * 2;
+    for (let k = 0; k <= segments; k++) {
+      const a = a0 + ((a1 - a0) * k) / segments;
+      out.push(new Vector2(cx + r * Math.cos(a), cy + r * Math.sin(a)));
+    }
+  }
+  return out;
+}
+
 export interface SlabOptions {
   /** Counter-clockwise outline in the XY plane. */
   outline: Vector2[];

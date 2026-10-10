@@ -49,7 +49,7 @@ import {
 import { createEnvironment, createLights } from './environment';
 import { frameCamera, pointsOf } from './framing';
 import { FrameGovernor, GPU_CONFIG, SOFTWARE_CONFIG } from './governor';
-import { createIPad, IPAD } from './ipad';
+import { createIPad, IPAD, STAND } from './ipad';
 import { createIPhone, IPHONE } from './iphone';
 import { createMacBook, MAC } from './macbook';
 import { createMaterials, reflectiveMaterials } from './materials';
@@ -72,6 +72,9 @@ const RATIOS = [2, 1.5, 1.25, 1];
 const SOFTWARE_STEPS = [1, 0.85, 0.72];
 
 const SCREEN_SIZES = { tablet: { w: 2360, h: 1640 }, projects: { w: 1179, h: 2556 } };
+
+/** How far past the canvas's left edge the iPad is when its slide starts (CSS px). */
+const ARRIVAL_MARGIN = 2;
 
 /** Ratios from largest to smallest for a canvas of this size. */
 function ladderFor(width: number, height: number, lite: boolean): number[] {
@@ -135,7 +138,9 @@ export async function createShowcaseScene(opts: SceneOptions): Promise<ShowcaseS
   scene.add(world);
   createLights(scene);
 
-  // Soft contact shadows: one blurred quad under each device.
+  // Soft contact shadows: one blurred quad under each device, and two under the
+  // iPad: a broad, faint one where it leans over the ground and a tight, dark
+  // one along the rail of its stand, the line where it touches the ground.
   const shadowTexture = createShadowTexture();
   const shadowGeometry = new PlaneGeometry(1, 1);
   shadowGeometry.rotateX(-Math.PI / 2);
@@ -154,7 +159,7 @@ export async function createShowcaseScene(opts: SceneOptions): Promise<ShowcaseS
     world.add(mesh);
     return mesh;
   };
-  const shadows = { mac: makeShadow(), ipad: makeShadow(), phone: makeShadow() };
+  const shadows = { mac: makeShadow(), ipad: makeShadow(), ipadRail: makeShadow(), phone: makeShadow() };
 
   const setShadow = (
     mesh: Mesh,
@@ -172,14 +177,20 @@ export async function createShowcaseScene(opts: SceneOptions): Promise<ShowcaseS
     mesh.position.x += Math.sin(s.yaw) * footprint.dz;
     mesh.position.z += Math.cos(s.yaw) * footprint.dz;
   };
-  // Footprints of the three shadows (constant per layout), kept out of the frame loop.
+  // Footprints of the shadows (constant per layout), kept out of the frame loop.
   const MAC_SHADOW = { w: MAC.width * 0.94, d: MAC.depth * 0.9, dz: 0, opacity: 0.72 };
   const PHONE_SHADOW = { w: IPHONE.width * 0.95, d: 28, dz: -10, opacity: 0.72 };
-  const ipadShadow = { w: 0, d: 0, dz: 0, opacity: 0.72 };
+  // Under the leaning iPad, from the rail back to below its top edge (its depth depends on the lean: see
+  // resize), and along the rail. The blur grows with a footprint, so both are narrower than what casts
+  // them: their soft ends then stop at the iPad's sides instead of running on along the ground.
+  const ipadShadow = { w: IPAD.width * 0.75, d: 0, dz: 0, opacity: 0.45 };
+  const RAIL_SHADOW = { w: STAND.rail.w * 0.7, d: STAND.rail.depth + 4, dz: STAND.rail.lipThickness - STAND.rail.depth / 2, opacity: 0.9 };
 
   const state = opts.state ?? initialState();
   const models = { mac, ipad, phone };
   let layout: Layout = LAYOUTS.wide;
+  /** How far left of its resting place the iPad starts its slide (mm): found for each canvas by `fitArrival`. */
+  let arrivalDx = layout.arrival.dx;
   let active = false;
   let dirty = true;
   let disposed = false;
@@ -204,14 +215,11 @@ export async function createShowcaseScene(opts: SceneOptions): Promise<ShowcaseS
       const k = STATE_KEYS[i];
       eff[k] = override && src === state && override[k] !== undefined ? (override[k] as number) : src[k];
     }
-    const placement = applyState(models, eff, layout);
+    const placement = applyState(models, eff, layout, arrivalDx);
     world.position.z = worldShift(eff, layout);
     setShadow(shadows.mac, placement.mac, MAC_SHADOW);
-    const ks = layout.ipad.scale ?? 1;
-    ipadShadow.w = IPAD.width * 0.9 * ks;
-    ipadShadow.d = 34 * ks;
-    ipadShadow.dz = -16 * ks;
     setShadow(shadows.ipad, placement.ipad, ipadShadow);
+    setShadow(shadows.ipadRail, placement.ipad, RAIL_SHADOW);
     setShadow(shadows.phone, placement.phone, PHONE_SHADOW);
     placeCamera();
   };
@@ -235,11 +243,60 @@ export async function createShowcaseScene(opts: SceneOptions): Promise<ShowcaseS
     return true;
   };
 
+  /**
+   * Finds where the iPad starts its slide on this canvas: the distance left of
+   * its resting place at which it and its stand, turned as they start and seen
+   * from where the dolly starts (the farthest the camera gets), are just past
+   * the left edge. Whatever the screen's shape, it then comes into view at the
+   * start of its beat, neither popping in partly on screen (too short a slide)
+   * nor spending the first part of the beat out of sight (too long a one).
+   */
+  const fitArrival = () => {
+    const start = finalState();
+    start.ipad = 0;
+    start.dolly = 0;
+    const v = new Vector3();
+    /** Right-most point (CSS px) of the iPad and its stand with the iPad `dx` left of its place. */
+    const rightEdge = (dx: number) => {
+      arrivalDx = dx;
+      pose(start);
+      ipad.group.updateWorldMatrix(true, true);
+      let right = -Infinity;
+      ipad.group.traverse((obj) => {
+        const position = (obj as Mesh).geometry?.getAttribute('position');
+        if (!position) return;
+        for (let i = 0; i < position.count; i++) {
+          v.fromBufferAttribute(position, i).applyMatrix4(obj.matrixWorld).project(camera);
+          right = Math.max(right, ((v.x + 1) / 2) * cssWidth);
+        }
+      });
+      return right;
+    };
+    // Secant steps: the position on screen is close to linear in the distance.
+    let dx0 = layout.arrival.dx;
+    let x0 = rightEdge(dx0);
+    let dx1 = dx0 + 40;
+    let x1 = rightEdge(dx1);
+    for (let i = 0; i < 8 && Math.abs(x1 + ARRIVAL_MARGIN) > 0.5 && x1 !== x0; i++) {
+      const next = Math.max(0, dx1 + ((-ARRIVAL_MARGIN - x1) * (dx1 - dx0)) / (x1 - x0));
+      dx0 = dx1;
+      x0 = x1;
+      dx1 = next;
+      x1 = rightEdge(dx1);
+    }
+    arrivalDx = dx1;
+    pose();
+  };
+
   const resize = () => {
     if (disposed) return;
     const m = opts.measure();
     if (m.width < 2 || m.height < 2) return;
     layout = m.stacked ? LAYOUTS.stacked : LAYOUTS.wide;
+    // The iPad's broad shadow reaches back over the ground as far as its top edge.
+    const reach = IPAD.height * Math.sin(layout.ipad.pitch) * 0.85;
+    ipadShadow.d = reach + STAND.rail.lipThickness;
+    ipadShadow.dz = (STAND.rail.lipThickness - reach) / 2;
     ladder = ladderFor(m.width, m.height, lite);
     governor.setSteps(ladder.length - 1);
     // Resizing the drawing buffer clears it, so only do it when the size
@@ -268,6 +325,7 @@ export async function createShowcaseScene(opts: SceneOptions): Promise<ShowcaseS
       points: pointsOf([mac.group, ipad.group, phone.group] as Object3D[]),
       // Desktop: the MacBook's width sets the scale; the others hang off its left.
       widthPoints: m.stacked ? undefined : pointsOf([mac.group] as Object3D[]),
+      focus: layout.focus ? new Vector3(layout.focus.x, layout.focus.y, layout.focus.z) : undefined,
       ground: new Vector3(layout.mac.x, 0, layout.mac.z + MAC.depth / 2),
       area: m.area,
     });
@@ -276,6 +334,7 @@ export async function createShowcaseScene(opts: SceneOptions): Promise<ShowcaseS
     camDir.copy(framed.dir);
     camDistance = framed.distance;
     pose();
+    fitArrival();
     dirty = true;
     // A cleared buffer must not reach the screen: draw straight away.
     if (resized && active && !contextLost) {
