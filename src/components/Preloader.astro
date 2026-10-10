@@ -1,7 +1,7 @@
 ---
 /**
  * Intro preloader: a full-screen overlay with the HAPTIC wordmark, a circular
- * progress ring and a percentage, shown once per browser session while the
+ * progress ring with the loaded amount (0–100), shown once per browser session while the
  * page's fonts, hero images and the 3D scene get ready (see scripts/preload.ts).
  *
  * Visible only while <html> has `is-loading`, which the inline script in
@@ -45,7 +45,7 @@ const word = LETTERS.map((ch, i) => ({ ch, i }));
   >
     <span class="ring__track"></span>
     <span class="ring__arc" data-arc></span>
-    <span class="ring__num"><span class="ring__digits" data-digits>0</span><span class="ring__pct" aria-hidden="true">%</span></span>
+    <span class="ring__num"><span class="ring__digits" data-digits>0</span></span>
   </div>
 </div>
 
@@ -349,18 +349,7 @@ const word = LETTERS.map((ch, i) => ({ ch, i }));
   }
 
   .ring__digits {
-    position: relative;
     display: inline-block;
-  }
-
-  /* The % hangs off the digits so they stay centred in the ring. */
-  .ring__pct {
-    position: absolute;
-    left: 100%;
-    top: 0.08em;
-    margin-left: 0.14em;
-    font-size: 0.66em;
-    opacity: 0.7;
   }
 
   @keyframes ring-in {
