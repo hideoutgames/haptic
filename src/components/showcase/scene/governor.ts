@@ -56,8 +56,13 @@ export class FrameGovernor {
   private head = 0;
   private skip = 0;
   private fastFrames = 0;
-  private sinceRaise = Infinity;
-  /** The last step was a raise that has not yet proved itself. */
+  /**
+   * The current level was reached by a raise. If it has to be left again,
+   * however much later (the scroll reached a heavier part of the scene), it
+   * is not tried again: otherwise the light and heavy parts of the sequence
+   * would switch the resolution back and forth every few seconds, which
+   * shows as the fine detail (key legends, grilles) popping.
+   */
   private probing = false;
   private netCount = 0;
   private netOpen: boolean;
@@ -118,7 +123,6 @@ export class FrameGovernor {
     this.ring[this.head] = dt;
     this.head = (this.head + 1) % this.cfg.window;
     if (this.count < this.cfg.window) this.count++;
-    this.sinceRaise++;
 
     if (this.netOpen) {
       this.net[this.netCount++] = dt;
@@ -135,7 +139,7 @@ export class FrameGovernor {
 
     if (m > this.cfg.slowMs && this.level < this.steps) {
       // A step up that was too slow: remember not to try it again.
-      if (this.probing && this.sinceRaise < this.cfg.window * 4) this.ceiling = this.level + 1;
+      if (this.probing) this.ceiling = this.level + 1;
       this.probing = false;
       this.level++;
       this.reset();
@@ -145,7 +149,6 @@ export class FrameGovernor {
     if (this.cfg.fastMs > 0 && m <= this.cfg.fastMs && this.level > this.ceiling) {
       if (++this.fastFrames >= this.cfg.raiseAfter) {
         this.level--;
-        this.sinceRaise = 0;
         this.probing = true;
         this.reset();
         return 'raise';

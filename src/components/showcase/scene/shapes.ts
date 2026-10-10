@@ -230,6 +230,68 @@ export function flatShape({ outline, uv }: FlatOptions): BufferGeometry {
 }
 
 /**
+ * A flat rounded rectangle facing +Z (the same outline as
+ * `roundedRectOutline`, uniform radius), triangulated as a cross of
+ * rectangles plus a fan in each corner, so every triangle is well
+ * proportioned. Ear clipping (`flatShape`) turns the same outline into slivers
+ * that run from one corner to the far side (a few hundredths of a millimetre
+ * wide and the whole shape long), and the depth a GPU interpolates over such a
+ * triangle is unreliable: where two flat parts of the deck lay a fraction of a
+ * millimetre apart, the lower one showed through in bands that followed them.
+ * The deck's inlays use this (what stands on them is depth-tested against them).
+ */
+export function roundedRectPlate(w: number, h: number, r: number, segments = 10, n = 2.6): BufferGeometry {
+  const x0 = -w / 2 + r;
+  const x1 = w / 2 - r;
+  const y0 = -h / 2 + r;
+  const y1 = h / 2 - r;
+  const positions: number[] = [];
+  const idx: number[] = [];
+  const vertex = (x: number, y: number) => {
+    positions.push(x, y, 0);
+    return positions.length / 3 - 1;
+  };
+  // Counter-clockwise from the bottom-left corner, as in roundedRectOutline:
+  // each corner's centre, then its arc from one tangent point to the other.
+  const corners = (
+    [
+      [x0, y0, Math.PI],
+      [x1, y0, -HALF_PI],
+      [x1, y1, 0],
+      [x0, y1, HALF_PI],
+    ] as const
+  ).map(([cx, cy, a0]) => {
+    const centre = vertex(cx, cy);
+    const arc: number[] = [];
+    for (let i = 0; i <= segments; i++) {
+      const t = a0 + (i / segments) * HALF_PI;
+      const c = Math.cos(t);
+      const s = Math.sin(t);
+      arc.push(vertex(cx + r * Math.sign(c) * Math.pow(Math.abs(c), 2 / n), cy + r * Math.sign(s) * Math.pow(Math.abs(s), 2 / n)));
+    }
+    for (let i = 0; i < segments; i++) idx.push(centre, arc[i], arc[i + 1]);
+    return { centre, first: arc[0], last: arc[segments] };
+  });
+  const quad = (a: number, b: number, c: number, d: number) => idx.push(a, b, c, a, c, d);
+  const [bl, br, tr, tl] = corners;
+  quad(bl.centre, br.centre, tr.centre, tl.centre);
+  quad(bl.last, br.first, br.centre, bl.centre);
+  quad(br.last, tr.first, tr.centre, br.centre);
+  quad(tr.last, tl.first, tl.centre, tr.centre);
+  quad(tl.last, bl.first, bl.centre, tl.centre);
+
+  const count = positions.length / 3;
+  const geometry = new BufferGeometry();
+  geometry.setAttribute('position', new Float32BufferAttribute(positions, 3));
+  geometry.setAttribute('normal', new Float32BufferAttribute(new Array(count).fill(0).flatMap(() => [0, 0, 1]), 3));
+  geometry.setAttribute('uv', new Float32BufferAttribute(new Array(count * 2).fill(0), 2));
+  geometry.setIndex(idx);
+  geometry.computeBoundingBox();
+  geometry.computeBoundingSphere();
+  return geometry;
+}
+
+/**
  * UV mapping that shows a texture over a w × h rectangle like CSS
  * `object-fit: cover`, with an optional crop (fractions of the texture,
  * measured from the top/bottom/left/right) and vertical anchoring.

@@ -11,17 +11,17 @@
 import {
   CylinderGeometry,
   Group,
-  InstancedMesh,
-  Matrix4,
   Mesh,
   MeshBasicMaterial,
   CircleGeometry,
   Color,
+  PlaneGeometry,
   type Texture,
 } from 'three';
 import type { Materials } from './materials';
 import { createKeyboard } from './keyboard';
-import { coverUV, flatShape, roundedRectOutline, slab, translateOutline } from './shapes';
+import { coverUV, flatShape, roundedRectOutline, roundedRectPlate, slab, translateOutline } from './shapes';
+import { createGrilleTexture, grilleExtent } from './textures';
 
 export const MAC = {
   width: 355.7,
@@ -36,6 +36,25 @@ export const MAC = {
 
 const BASE_TOP = MAC.feet + MAC.baseHeight; // 11.3
 const PIVOT_Y = BASE_TOP + 1.6;
+
+/**
+ * The parts laid on the deck (keyboard well, hinge vent, trackpad and its
+ * surround, speaker grilles) are flat shapes a fraction of a millimetre above
+ * the base's top face and above each other. Seen at the camera's grazing
+ * angle, no depth buffer keeps such layers apart reliably: they flickered,
+ * the lower one showing through in bands as the camera moved. So they are
+ * drawn in a fixed order instead, right after the base, without a depth test
+ * (see the deck materials): each one simply covers what is below it. Three
+ * draws opaque objects by `renderOrder` first; everything else keeps the
+ * default 0 and is depth-tested against the deck as usual.
+ */
+const DECK_ORDER = { base: -3, inlay: -2, trackpad: -1 } as const;
+/** Height of the inlays above the base's top face (mm); what stands on them is depth-tested against this. */
+const INLAY = 0.05;
+/** The keycaps stand this far above the well (mm), clear of it for the depth test. */
+const KEY_LIFT = 0.1;
+/** Lid angle (degrees) from which the keyboard is drawn (see setOpen). */
+const KEYS_SHOWN_FROM = 5;
 /** Distance of the screen face in front of the hinge axis, inside the lid. */
 const FACE_Z = 1.3;
 
@@ -62,6 +81,7 @@ export function createMacBook(m: Materials, screen: Texture, tabletSize: { w: nu
   ]);
   base.rotation.x = -Math.PI / 2;
   base.position.y = MAC.feet + MAC.baseHeight / 2;
+  base.renderOrder = DECK_ORDER.base;
   group.add(base);
 
   // Rubber feet.
@@ -82,10 +102,12 @@ export function createMacBook(m: Materials, screen: Texture, tabletSize: { w: nu
   deck.position.y = BASE_TOP;
   group.add(deck);
 
-  const flat = (outline: ReturnType<typeof roundedRectOutline>, mat: Mesh['material'], y: number) => {
-    const mesh = new Mesh(flatShape({ outline, uv: () => [0, 0] }), mat);
+  /** A rounded inlay on the deck, centred at depth `z`. */
+  const inlay = (w: number, d: number, r: number, segments: number, mat: Mesh['material'], z: number, order: number = DECK_ORDER.inlay) => {
+    const mesh = new Mesh(roundedRectPlate(w, d, r, segments), mat);
     mesh.rotation.x = -Math.PI / 2;
-    mesh.position.y = y;
+    mesh.position.set(0, INLAY, z);
+    mesh.renderOrder = order;
     deck.add(mesh);
     return mesh;
   };
@@ -95,50 +117,47 @@ export function createMacBook(m: Materials, screen: Texture, tabletSize: { w: nu
   const kbBackZ = -D / 2 + 13;
   const wellW = keyboard.width + 11;
   const wellD = keyboard.depth + 10;
-  const well = flat(roundedRectOutline(wellW, wellD, 5, 8), m.blackMatte, 0.03);
-  well.position.z = kbBackZ + keyboard.depth / 2;
-  keyboard.group.position.set(0, 0.05, kbBackZ);
+  inlay(wellW, wellD, 5, 8, m.deckBlack, kbBackZ + keyboard.depth / 2);
+  keyboard.group.position.set(0, INLAY + KEY_LIFT, kbBackZ);
   deck.add(keyboard.group);
 
-  // Trackpad (a hairline dark frame, then the glass).
+  // Trackpad (a hairline dark frame, then the glass over it).
   const tpW = 160;
   const tpD = 100;
   const tpZ = D / 2 - 12 - tpD / 2;
-  const tpFrame = flat(roundedRectOutline(tpW + 1.4, tpD + 1.4, 6.6, 8), m.blackMatte, 0.03);
-  tpFrame.position.z = tpZ;
-  const tp = flat(roundedRectOutline(tpW, tpD, 6, 8), m.trackpad, 0.06);
-  tp.position.z = tpZ;
+  inlay(tpW + 1.4, tpD + 1.4, 6.6, 8, m.deckBlack, tpZ);
+  inlay(tpW, tpD, 6, 8, m.trackpad, tpZ, DECK_ORDER.trackpad);
 
   // Hinge vent: the black strip behind the keys, and the hinge barrel.
-  const vent = flat(roundedRectOutline(W - 40, 6.5, 3, 6), m.blackMatte, 0.03);
-  vent.position.z = -D / 2 + 5.2;
+  inlay(W - 40, 6.5, 3, 6, m.deckBlack, -D / 2 + 5.2);
   const barrel = new Mesh(new CylinderGeometry(3.1, 3.1, W - 56, 24), m.hinge);
   barrel.rotation.z = Math.PI / 2;
   barrel.position.set(0, 1.5, -D / 2 + 3.4);
   deck.add(barrel);
 
-  // Speaker grilles on both sides of the keyboard (left out when rendering in software).
+  // Speaker grilles on both sides of the keyboard (left out when rendering in
+  // software): 6 × 42 holes each, an aluminium inlay per side whose texture
+  // holds the holes (mirrored on the left; see createGrilleTexture for why
+  // not one disc per hole).
   if (!lite) {
-    const holeGeo = new CircleGeometry(0.5, 8);
-    const cols = 6;
-    const rows = 42;
-    const grille = new InstancedMesh(holeGeo, m.blackMatte, cols * rows * 2);
-    const mm = new Matrix4();
-    let gi = 0;
-    const gx = wellW / 2 + 5.5;
+    const spec = { cols: 6, rows: 42, pitchX: 2.1, pitchZ: 2.35, radius: 0.5 };
+    const { width: gw, depth: gd, inset } = grilleExtent(spec);
+    m.grille.map = createGrilleTexture(spec);
+    // Centre of the inlay: the first hole of the first row is 5.5 mm outside the well, 6 mm behind the keys.
+    const gx = wellW / 2 + 5.5 - inset + gw / 2;
+    const gz = kbBackZ + 6 - inset + gd / 2;
     for (const side of [-1, 1]) {
-      for (let r = 0; r < rows; r++) {
-        for (let c = 0; c < cols; c++) {
-          const x = side * (gx + c * 2.1 + (r % 2) * 1.05);
-          const z = kbBackZ + 6 + r * 2.35;
-          mm.makeRotationX(-Math.PI / 2);
-          mm.setPosition(x, 0.06, z);
-          grille.setMatrixAt(gi++, mm);
-        }
+      const geo = new PlaneGeometry(gw, gd);
+      geo.rotateX(-Math.PI / 2);
+      if (side < 0) {
+        const uv = geo.getAttribute('uv');
+        for (let i = 0; i < uv.count; i++) uv.setX(i, 1 - uv.getX(i));
       }
+      const grille = new Mesh(geo, m.grille);
+      grille.position.set(side * gx, INLAY, gz);
+      grille.renderOrder = DECK_ORDER.inlay;
+      deck.add(grille);
     }
-    grille.instanceMatrix.needsUpdate = true;
-    deck.add(grille);
   }
 
   // ---- Lid (upright frame: x right, y up the lid, z out of the screen) ----
@@ -213,6 +232,12 @@ export function createMacBook(m: Materials, screen: Texture, tabletSize: { w: nu
   const setOpen = (degrees: number) => {
     // Upright frame at 0 rad is a 90 degree opening.
     lid.rotation.x = Math.PI / 2 - (degrees * Math.PI) / 180;
+    // The keys stand taller than the gap under the shut lid, so they are
+    // partly inside it, and a GPU can let single samples of them through
+    // its face. Nothing of them can be seen before the lid is about 5.4
+    // degrees open (the front row, from a camera 10 degrees above the deck;
+    // the camera is never lower), so they are only drawn from then on.
+    keyboard.group.visible = degrees >= KEYS_SHOWN_FROM;
   };
   setOpen(0);
 

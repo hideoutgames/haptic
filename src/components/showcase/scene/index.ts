@@ -21,6 +21,7 @@
  */
 import {
   ACESFilmicToneMapping,
+  Box3,
   Group,
   InstancedMesh,
   Mesh,
@@ -37,6 +38,7 @@ import {
 } from 'three';
 import {
   applyState,
+  DOLLY,
   dollyFactor,
   finalState,
   initialState,
@@ -216,6 +218,62 @@ export async function createShowcaseScene(opts: SceneOptions): Promise<ShowcaseS
     placeCamera();
   };
 
+  /**
+   * Everything the choreography can show, per layout: the world-space box
+   * around the devices and their shadows in sampled poses (each state value
+   * swept on its own, from the start and from the finished state, which covers
+   * every device whose pose follows its own values). The poses themselves
+   * live in choreography.ts; this only measures them, so it follows changes
+   * there. Measured once per layout (a few milliseconds).
+   */
+  const reach = new Map<Layout['id'], Box3>();
+  const sceneReach = (): Box3 => {
+    const known = reach.get(layout.id);
+    if (known) return known;
+    const box = new Box3();
+    const sample = initialState();
+    const STEPS = 8;
+    for (const from of [initialState, finalState]) {
+      for (const key of STATE_KEYS) {
+        for (let i = 0; i <= STEPS; i++) {
+          Object.assign(sample, from());
+          sample[key] = i / STEPS;
+          pose(sample);
+          box.expandByObject(world);
+        }
+      }
+    }
+    reach.set(layout.id, box);
+    return box;
+  };
+
+  /**
+   * The depth range hugs the scene. Depth precision is spread over near…far
+   * (most of it just past `near`), and the models have layers a fraction of a
+   * millimetre apart (key legends on the caps, the keys on their well,
+   * screens behind their glass), some seen at a grazing angle. A loose range
+   * (0.3 m to 9 m, with the scene about a metre away) wastes most of the
+   * precision, which a 16-bit depth buffer cannot spare. The range covers the
+   * box above from every camera position of the dolly, with a margin.
+   */
+  const corner = new Vector3();
+  const fitDepthRange = () => {
+    const { min, max } = sceneReach();
+    let nearest = Infinity;
+    let farthest = -Infinity;
+    for (let i = 0; i < 8; i++) {
+      corner.set(i & 1 ? max.x : min.x, i & 2 ? max.y : min.y, i & 4 ? max.z : min.z);
+      // How far the corner lies in front of the composition's centre, towards the camera.
+      const towards = corner.sub(camCentre).dot(camDir);
+      // The dolly ends at camDistance and starts DOLLY farther out.
+      nearest = Math.min(nearest, camDistance - towards);
+      farthest = Math.max(farthest, camDistance * (1 + DOLLY) - towards);
+    }
+    camera.near = Math.max(camDistance * 0.05, nearest * 0.85);
+    camera.far = farthest * 1.15;
+    camera.updateProjectionMatrix();
+  };
+
   // ---- Resolution ----
   const base = lite ? SOFTWARE_CONFIG : GPU_CONFIG;
   // `safetyNet: false` (debugging) never gives up on the 3D scene.
@@ -275,6 +333,7 @@ export async function createShowcaseScene(opts: SceneOptions): Promise<ShowcaseS
     camCentre.copy(framed.centre);
     camDir.copy(framed.dir);
     camDistance = framed.distance;
+    fitDepthRange();
     pose();
     dirty = true;
     // A cleared buffer must not reach the screen: draw straight away.

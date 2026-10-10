@@ -4,6 +4,7 @@
  */
 import {
   AdditiveBlending,
+  AlwaysDepth,
   Color,
   FrontSide,
   MeshBasicMaterial,
@@ -100,8 +101,23 @@ export function createMaterials(lite = false) {
 
   const flash = new MeshStandardMaterial({ color: new Color('#6d6a66'), roughness: 0.35, metalness: 0.3 });
 
-  /** Matte black plastics: the keyboard well, hinge vent, speaker holes. */
+  /** Matte black plastics (the iPhone's microphone; the MacBook deck has its own, below). */
   const blackMatte = new MeshStandardMaterial({ color: new Color('#050506'), metalness: 0, roughness: 0.75 });
+
+  // The MacBook deck's inlays are drawn in a fixed order right after the base,
+  // each over the last, without a depth test (see DECK_ORDER in macbook.ts):
+  // they are flat layers too close together for any depth buffer.
+
+  /** The keyboard well, hinge vent and trackpad surround: matte black. */
+  const deckBlack = new MeshStandardMaterial({ color: new Color('#050506'), metalness: 0, roughness: 0.75, depthFunc: AlwaysDepth });
+
+  /**
+   * The speaker grilles: the deck's own aluminium, with the holes in its
+   * texture (macbook.ts assigns it; see createGrilleTexture), so the inlay
+   * cannot be told from the deck around it.
+   */
+  const grille = aluminium.clone();
+  grille.depthFunc = AlwaysDepth;
 
   /** Hinge barrel. */
   const hinge = new MeshStandardMaterial({ color: new Color('#0b0b0d'), metalness: 0.7, roughness: 0.38 });
@@ -110,11 +126,12 @@ export function createMaterials(lite = false) {
 
   const keycap = new MeshStandardMaterial({ color: new Color('#0c0c0e'), metalness: 0, roughness: 0.52 });
 
-  /** Trackpad glass: slightly lighter than the deck, glossier. */
+  /** Trackpad glass: slightly lighter than the deck, glossier. A deck inlay (no depth test, see above). */
   const trackpad = new MeshStandardMaterial({
     color: new Color('#3a3a3d'),
     metalness: 0.6,
     roughness: 0.2,
+    depthFunc: AlwaysDepth,
   });
 
   /**
@@ -169,6 +186,8 @@ export function createMaterials(lite = false) {
     lensCoat,
     flash,
     blackMatte,
+    deckBlack,
+    grille,
     hinge,
     rubber,
     keycap,

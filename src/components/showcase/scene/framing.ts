@@ -44,6 +44,8 @@ export function frameCamera(
   const widthPoints = opts.widthPoints ?? points;
   camera.fov = opts.fov;
   camera.aspect = W / H;
+  // Provisional depth range (it does not affect the fit): the scene sets one
+  // that hugs the composition once the distance is known.
   camera.near = 300;
   camera.far = 9000;
   camera.clearViewOffset();

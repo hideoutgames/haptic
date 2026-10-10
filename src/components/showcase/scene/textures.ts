@@ -94,6 +94,67 @@ export function createShadowTexture(size = 256): CanvasTexture {
   return tex;
 }
 
+export interface GrilleSpec {
+  /** Holes per row and number of rows; odd rows are shifted by half a pitch. */
+  cols: number;
+  rows: number;
+  /** Hole spacing across (x) and along (z) the grille, and the hole radius (mm). */
+  pitchX: number;
+  pitchZ: number;
+  radius: number;
+}
+
+/** Plain border (mm) around the outermost holes, so the smallest mipmaps fade out inside the inlay. */
+const GRILLE_MARGIN = 1;
+/** Texture resolution: finer than a screen pixel ever gets on the deck, so the texture is only ever minified. */
+const GRILLE_TEXELS_PER_MM = 8;
+/** Colour of a hole: 0.19 in linear light, the matte black's share of the aluminium's brightness on the deck. */
+const GRILLE_HOLE = '#777777';
+
+/** Size (mm) of the inlay that carries a grille texture, and how far its first hole is from its edges. */
+export function grilleExtent(g: GrilleSpec): { width: number; depth: number; inset: number } {
+  const inset = g.radius + GRILLE_MARGIN;
+  return {
+    width: (g.cols - 1) * g.pitchX + g.pitchX / 2 + 2 * inset,
+    depth: (g.rows - 1) * g.pitchZ + 2 * inset,
+    inset,
+  };
+}
+
+/**
+ * Speaker grille: the staggered grid of round holes, dark on white (the
+ * colour map of an inlay in the deck's own material), drawn once into a
+ * texture. As separate little discs the holes are smaller than a pixel from
+ * where the camera sees the deck (about a millimetre across, a fifth of that
+ * tall after foreshortening), so they alias into a pattern that crawls as the
+ * camera moves. As a texture, mipmaps and anisotropic filtering average them
+ * into an even, slightly darker patch at a distance and resolve them close
+ * up. The holes keep the brightness the matte black plastic has next to the
+ * aluminium under this lighting rather than going black. Row 0 is at the top
+ * of the texture (the back of the grille).
+ */
+export function createGrilleTexture(g: GrilleSpec): CanvasTexture {
+  const { width, depth, inset } = grilleExtent(g);
+  const k = GRILLE_TEXELS_PER_MM;
+  const [c, ctx] = canvas(Math.ceil(width * k), Math.ceil(depth * k));
+  ctx.fillStyle = '#ffffff';
+  ctx.fillRect(0, 0, c.width, c.height);
+  ctx.fillStyle = GRILLE_HOLE;
+  for (let r = 0; r < g.rows; r++) {
+    for (let col = 0; col < g.cols; col++) {
+      const x = inset + col * g.pitchX + (r % 2) * (g.pitchX / 2);
+      const y = inset + r * g.pitchZ;
+      ctx.beginPath();
+      ctx.arc(x * k, y * k, g.radius * k, 0, Math.PI * 2);
+      ctx.fill();
+    }
+  }
+  const texture = new CanvasTexture(c);
+  texture.minFilter = LinearMipmapLinearFilter;
+  // Asks for the most the GPU offers (three clamps it to the supported maximum).
+  return finish(texture, 16);
+}
+
 export interface Legend {
   /** Main glyph (bottom or centre). */
   main: string;
