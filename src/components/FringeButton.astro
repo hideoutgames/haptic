@@ -1,0 +1,132 @@
+---
+/**
+ * The site's white button with the chromatic-aberration fringes: a white face
+ * over two soft colour layers (red widest, at the back; amber in between),
+ * widened horizontally like the HAPTIC title's fringes. Used for the 404 page's
+ * way home and the support page's email link. (The download button is the
+ * same idea at a larger size, with its own platform markup.)
+ *
+ * The content goes in the default slot (an icon and a label); it is laid out
+ * in a row above the face. Pass `class` to place the button: the caller's
+ * scope attribute comes through with the other attributes, so its scoped
+ * styles (margins, load-in animations) reach the link.
+ */
+import type { HTMLAttributes } from 'astro/types';
+
+type Props = HTMLAttributes<'a'>;
+
+const { class: className, ...attrs } = Astro.props;
+---
+
+<a class:list={['fringe-btn', className]} {...attrs}>
+  <span class="fringe-btn__face" aria-hidden="true"></span>
+  <span class="fringe-btn__content"><slot /></span>
+</a>
+
+<style>
+  .fringe-btn {
+    --radius: max(16px, calc(18 * var(--u)));
+    position: relative;
+    z-index: var(--z-media);
+    isolation: isolate;
+    display: inline-flex;
+    align-items: center;
+    height: max(56px, calc(64 * var(--u)));
+    padding: 0 max(26px, calc(32 * var(--u))) 0 max(22px, calc(26 * var(--u)));
+    border-radius: var(--radius);
+    color: var(--c-bg);
+    font-size: max(18px, calc(21 * var(--u)));
+    font-weight: 650;
+    letter-spacing: -0.005em;
+    white-space: nowrap;
+    transition: transform 0.35s var(--ease-out);
+  }
+
+  /* Colour fringes, widest (red) at the back. Horizontal only, like the title. */
+  .fringe-btn::before,
+  .fringe-btn::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    z-index: -2;
+    border-radius: var(--radius);
+    filter: blur(1.5px);
+    transition: transform 0.45s var(--ease-out);
+  }
+
+  .fringe-btn::before {
+    background: var(--c-red);
+    transform: scaleX(1.05);
+  }
+
+  .fringe-btn::after {
+    z-index: -1;
+    background: var(--c-amber);
+    transform: scaleX(1.025);
+  }
+
+  .fringe-btn__face {
+    position: absolute;
+    inset: 0;
+    border-radius: var(--radius);
+    background: #fff;
+  }
+
+  .fringe-btn__content {
+    position: relative;
+    display: inline-flex;
+    align-items: center;
+    gap: max(10px, calc(12 * var(--u)));
+  }
+
+  .fringe-btn:hover {
+    transform: translateY(calc(-3 * var(--u)));
+  }
+
+  .fringe-btn:hover::before {
+    transform: scaleX(1.075);
+  }
+
+  .fringe-btn:hover::after {
+    transform: scaleX(1.04);
+  }
+
+  .fringe-btn:active {
+    transform: translateY(0) scale(0.985);
+  }
+
+  /* The global focus ring squares off the radius; keep the button's own. */
+  .fringe-btn:focus-visible {
+    border-radius: var(--radius);
+    outline-offset: max(6px, calc(8 * var(--u)));
+  }
+
+  /* Mostly touch screens here, where a tap leaves :hover stuck: keep the resting fringes
+     (as the download button does). */
+  @media (max-width: 820px) {
+    .fringe-btn:hover::before {
+      transform: scaleX(1.05);
+    }
+
+    .fringe-btn:hover::after {
+      transform: scaleX(1.025);
+    }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .fringe-btn:hover {
+      transform: none;
+    }
+  }
+
+  @media (forced-colors: active) {
+    .fringe-btn::before,
+    .fringe-btn::after {
+      display: none;
+    }
+
+    .fringe-btn {
+      border: 2px solid ButtonText;
+    }
+  }
+</style>
