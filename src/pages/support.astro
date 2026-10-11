@@ -1,32 +1,24 @@
 ---
 /**
- * Support page: a short FAQ and the support email address.
- *
- * Layout: the site header (H menu), a heading block like the download
- * section's (Onest Bold title, serif lead) over a dimmed copy of the hero's
- * glow, then the questions as native disclosure widgets (<details>: keyboard
- * and screen-reader support without any script) and a contact block whose
- * email link is the site's fringed white button. The footer closes the page.
+ * Support page: a short FAQ and the support email address, in the shell the
+ * secondary pages share (layouts/Page.astro: header, heading over a dimmed
+ * hero glow, a centred column, footer). The questions use the shared Faq
+ * component; the email link is the site's fringed white button.
  *
  * The FAQ answers are placeholders until the product copy is final. Sizes are
  * mockup pixels (calc(N * var(--u))) on desktop; ≤ 820px switches to phone sizes.
  */
-import Base from '../layouts/Base.astro';
-import SiteHeader from '../components/SiteHeader.astro';
-import SiteFooter from '../components/SiteFooter.astro';
-import Grain from '../components/Grain.astro';
+import Page from '../layouts/Page.astro';
+import Faq, { type FaqItem } from '../components/Faq.astro';
 import FringeButton from '../components/FringeButton.astro';
-import { glowBackground, GLOW_WIDTH, GLOW_HEIGHT } from '../components/hero/glow';
+import { SUPPORT_EMAIL as EMAIL } from '../data/site';
 import { withBase } from '../lib/paths';
 
-/** Where support mail goes. */
-const EMAIL = 'support@hideout.no';
-
 /** Placeholder questions; answers may hold simple inline HTML (links). */
-const FAQ = [
+const FAQ: FaqItem[] = [
   {
     q: 'Is Haptic free?',
-    a: `Yes, on desktop: Haptic is free on Mac, Windows and Linux. On iPhone, iPad and Android it needs a Haptic Pro subscription. See <a href="${withBase('/pricing')}">Pricing</a> for details.`,
+    a: `On desktop, yes: Haptic is free on Mac, Windows and Linux while you, or the company you work for, makes less than $50,000 a year in revenue. On iPhone, iPad and Android, or above that revenue, it needs a Haptic Pro subscription. See <a href="${withBase('/pricing')}">Pricing</a> for details.`,
   },
   {
     q: 'Which devices does Haptic run on?',
@@ -41,228 +33,32 @@ const FAQ = [
     a: `Email us at <a href="mailto:${EMAIL}">${EMAIL}</a>. Tell us what happened, which device and version of Haptic you use, and add a screenshot if you can.`,
   },
 ];
-
-const glow = glowBackground();
 ---
 
-<Base title="Support — Haptic" description="Answers to common questions about Haptic, and how to reach us.">
-  <SiteHeader />
+<Page
+  title="Support — Haptic"
+  description="Answers to common questions about Haptic, and how to reach us."
+  heading="Support"
+  lead="Quick answers, and how to reach us."
+>
+  <Faq class="support__faq" title="Frequently asked questions" items={FAQ} />
 
-  <main id="main" class="support">
-    <div class="support__glow" aria-hidden="true" style={`--glow: ${glow}; --glow-ratio: ${GLOW_HEIGHT / GLOW_WIDTH}`}></div>
-
-    <div class="support__inner">
-      <header class="intro">
-        <h1 class="title">Support</h1>
-        <p class="lead">Quick answers, and how to reach us.</p>
-      </header>
-
-      <section class="faq" aria-labelledby="faq-title">
-        <h2 id="faq-title" class="label">Frequently asked questions</h2>
-        <div class="faq__list">
-          {
-            FAQ.map(({ q, a }) => (
-              <details class="qa">
-                <summary class="qa__q">
-                  <span>{q}</span>
-                  <span class="qa__icon" aria-hidden="true" />
-                </summary>
-                <p class="qa__a" set:html={a} />
-              </details>
-            ))
-          }
-        </div>
-      </section>
-
-      <section class="contact" aria-labelledby="contact-title">
-        <h2 id="contact-title" class="contact__title">Still need help?</h2>
-        <p class="contact__text">Email us and we will get back to you.</p>
-        <FringeButton class="contact__button" href={`mailto:${EMAIL}`}>
-          <svg class="contact__icon" viewBox="0 0 16 16" width="16" height="16" aria-hidden="true" focusable="false">
-            <rect x="1.75" y="3.25" width="12.5" height="9.5" rx="2" fill="none" stroke="currentColor" stroke-width="1.5"></rect>
-            <path d="m2.5 4.5 5.5 4.25 5.5-4.25" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"></path>
-          </svg>
-          <span>{EMAIL}</span>
-        </FringeButton>
-      </section>
-    </div>
-
-    <Grain />
-  </main>
-
-  <SiteFooter />
-</Base>
+  <section class="contact" aria-labelledby="contact-title">
+    <h2 id="contact-title" class="contact__title">Still need help?</h2>
+    <p class="contact__text">Email us and we will get back to you.</p>
+    <FringeButton class="contact__button" href={`mailto:${EMAIL}`}>
+      <svg class="contact__icon" viewBox="0 0 16 16" width="16" height="16" aria-hidden="true" focusable="false">
+        <rect x="1.75" y="3.25" width="12.5" height="9.5" rx="2" fill="none" stroke="currentColor" stroke-width="1.5"></rect>
+        <path d="m2.5 4.5 5.5 4.25 5.5-4.25" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"></path>
+      </svg>
+      <span>{EMAIL}</span>
+    </FringeButton>
+  </section>
+</Page>
 
 <style>
-  .support {
-    --safe-top: env(safe-area-inset-top, 0px);
-    /* Column width: the FAQ reads best at a modest measure. */
-    --col: calc(880 * var(--u));
-    position: relative;
-    isolation: isolate;
-    overflow: clip;
-    padding: calc(var(--safe-top) + 176 * var(--u)) var(--gutter) calc(140 * var(--u));
-    color: var(--c-text);
-    background: var(--c-bg);
-  }
-
-  /* The hero's glow, dimmed to a hint behind the heading (one glow pixel = one --u, as in the hero). */
-  .support__glow {
-    position: absolute;
-    z-index: var(--z-bg);
-    top: calc(var(--safe-top) - 120 * var(--u));
-    left: 50%;
-    width: calc(1280 * var(--u));
-    height: calc(1280 * var(--u) * var(--glow-ratio));
-    translate: -50% 0;
-    background-image: var(--glow);
-    opacity: 0.3;
-    mask-image:
-      linear-gradient(to right, transparent, #000 14%, #000 86%, transparent),
-      linear-gradient(#000 45%, transparent 85%);
-    mask-composite: intersect;
-    -webkit-mask-composite: source-in;
-    pointer-events: none;
-  }
-
-  .support__inner {
-    position: relative;
-    z-index: var(--z-content);
-    max-width: var(--col);
-    margin: 0 auto;
-  }
-
-  /* ---- Heading: as the download section's (Onest Bold title, serif lead) ---- */
-  .intro {
-    text-align: center;
-  }
-
-  .title {
-    margin: 0;
-    font-family: var(--font-sans);
-    font-size: calc(72 * var(--u));
-    font-weight: 700;
-    line-height: 1.05;
-    letter-spacing: -0.028em;
-  }
-
-  .lead {
-    margin: calc(18 * var(--u)) 0 0;
-    font-family: var(--font-serif);
-    font-size: calc(32 * var(--u));
-    font-weight: 400;
-    line-height: 1.2;
-    text-wrap: balance;
-  }
-
-  /* ---- FAQ ---- */
-  .faq {
+  .support__faq {
     margin-top: calc(96 * var(--u));
-  }
-
-  .label {
-    margin: 0 0 calc(14 * var(--u));
-    font-size: max(14px, calc(15 * var(--u)));
-    font-weight: 500;
-    letter-spacing: 0.02em;
-    color: var(--c-text-muted);
-  }
-
-  .faq__list {
-    border-bottom: 1px solid rgb(255 255 255 / 0.14);
-  }
-
-  .qa {
-    border-top: 1px solid rgb(255 255 255 / 0.14);
-  }
-
-  .qa__q {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: calc(24 * var(--u));
-    padding: calc(24 * var(--u)) 0;
-    font-size: max(18px, calc(22 * var(--u)));
-    font-weight: 500;
-    line-height: 1.3;
-    list-style: none;
-    cursor: pointer;
-    transition: color 0.2s ease;
-  }
-
-  .qa__q::-webkit-details-marker {
-    display: none;
-  }
-
-  @media (hover: hover) {
-    .qa__q:hover {
-      color: rgb(255 255 255 / 0.8);
-    }
-  }
-
-  .qa__q:focus-visible {
-    outline-offset: 4px;
-  }
-
-  /* Plus that becomes a minus: the vertical stroke folds away. */
-  .qa__icon {
-    position: relative;
-    flex: none;
-    width: max(14px, calc(16 * var(--u)));
-    height: max(14px, calc(16 * var(--u)));
-  }
-
-  .qa__icon::before,
-  .qa__icon::after {
-    content: '';
-    position: absolute;
-    inset: 50% 0 auto;
-    height: 1.5px;
-    margin-top: -0.75px;
-    border-radius: 1px;
-    background: currentColor;
-    transition: transform 0.3s var(--ease-out);
-  }
-
-  .qa__icon::after {
-    transform: rotate(90deg);
-  }
-
-  .qa[open] .qa__icon::after {
-    transform: rotate(90deg) scaleX(0);
-  }
-
-  .qa__a {
-    max-width: calc(680 * var(--u));
-    margin: 0;
-    padding: 0 0 calc(26 * var(--u));
-    font-size: max(16px, calc(18 * var(--u)));
-    line-height: 1.6;
-    color: rgb(255 255 255 / 0.72);
-  }
-
-  .qa[open] .qa__a {
-    animation: qa-in 0.35s var(--ease-out);
-  }
-
-  .qa__a :global(a) {
-    color: var(--c-text);
-    text-decoration: underline;
-    text-decoration-thickness: 1px;
-    text-underline-offset: 0.2em;
-    text-decoration-color: rgb(255 255 255 / 0.5);
-    transition: text-decoration-color 0.2s ease;
-  }
-
-  .qa__a :global(a:hover) {
-    text-decoration-color: currentColor;
-  }
-
-  @keyframes qa-in {
-    from {
-      opacity: 0;
-      transform: translateY(calc(-6 * var(--u)));
-    }
   }
 
   /* ---- Contact ---- */
@@ -296,44 +92,8 @@ const glow = glowBackground();
 
   /* ---- Phones / tablet portrait ---- */
   @media (max-width: 820px) {
-    /* --u is far below 1px here: the column takes the full width, the answers up to a readable 40em. */
-    .support {
-      --col: none;
-      padding: calc(var(--safe-top) + 112px) var(--gutter) 88px;
-    }
-
-    .support__glow {
-      top: calc(var(--safe-top) - 60px);
-      width: 1280px;
-      height: calc(1280px * var(--glow-ratio));
-      opacity: 0.25;
-    }
-
-    .title {
-      font-size: clamp(42px, 12.6vw, 68px);
-    }
-
-    .lead {
-      margin-top: 12px;
-      font-size: clamp(20px, 5.4vw, 28px);
-    }
-
-    .faq {
+    .support__faq {
       margin-top: 56px;
-    }
-
-    .label {
-      margin-bottom: 10px;
-    }
-
-    .qa__q {
-      gap: 16px;
-      padding: 20px 0;
-    }
-
-    .qa__a {
-      max-width: 40em;
-      padding-bottom: 22px;
     }
 
     .contact {
@@ -350,12 +110,6 @@ const glow = glowBackground();
 
     .contact__button {
       margin-top: 24px;
-    }
-  }
-
-  @media (forced-colors: active) {
-    .support__glow {
-      display: none;
     }
   }
 </style>
