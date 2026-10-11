@@ -18,6 +18,7 @@ import Base from '../layouts/Base.astro';
 import SiteHeader from '../components/SiteHeader.astro';
 import Grain from '../components/Grain.astro';
 import ChromaticTitle from '../components/ChromaticTitle.astro';
+import FringeButton from '../components/FringeButton.astro';
 import { glowBackground, GLOW_WIDTH, GLOW_HEIGHT } from '../components/hero/glow';
 import { withBase } from '../lib/paths';
 
@@ -38,13 +39,12 @@ const glow = glowBackground();
 
       <p class="nf__line">This page doesn’t exist.</p>
 
-      <a class="nf__home" href={withBase('/')}>
-        <span class="nf__home-face" aria-hidden="true"></span>
+      <FringeButton class="nf__home" href={withBase('/')}>
         <svg class="nf__home-icon" viewBox="0 0 16 16" width="16" height="16" aria-hidden="true" focusable="false">
           <path d="M13.25 8H2.75M7.25 3.5 2.75 8l4.5 4.5" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"></path>
         </svg>
-        <span class="nf__home-label">Back to home</span>
-      </a>
+        <span>Back to home</span>
+      </FringeButton>
     </div>
 
     <Grain />
@@ -126,88 +126,15 @@ const glow = glowBackground();
     animation: nf-rise 0.9s var(--ease-out) 0.45s both;
   }
 
-  /* ---- Back home: the site's white button with the colour fringes (see download/DownloadButton.astro) ---- */
+  /* ---- Back home: the site's white button (FringeButton), placed and brought in here ---- */
   .nf__home {
-    --radius: max(16px, calc(18 * var(--u)));
-    position: relative;
-    z-index: var(--z-media);
-    isolation: isolate;
-    display: inline-flex;
-    align-items: center;
-    gap: max(10px, calc(12 * var(--u)));
-    height: max(56px, calc(64 * var(--u)));
     margin-top: max(36px, calc(48 * var(--u)));
-    padding: 0 max(26px, calc(32 * var(--u))) 0 max(22px, calc(26 * var(--u)));
-    border-radius: var(--radius);
-    color: var(--c-bg);
-    font-size: max(18px, calc(21 * var(--u)));
-    font-weight: 650;
-    letter-spacing: -0.005em;
-    white-space: nowrap;
     animation: nf-rise 0.9s var(--ease-out) 0.6s both;
-    transition: transform 0.35s var(--ease-out);
-  }
-
-  /* Colour fringes, widest (red) at the back. Horizontal only, like the title. */
-  .nf__home::before,
-  .nf__home::after {
-    content: '';
-    position: absolute;
-    inset: 0;
-    z-index: -2;
-    border-radius: var(--radius);
-    filter: blur(1.5px);
-    transition: transform 0.45s var(--ease-out);
-  }
-
-  .nf__home::before {
-    background: var(--c-red);
-    transform: scaleX(1.05);
-  }
-
-  .nf__home::after {
-    z-index: -1;
-    background: var(--c-amber);
-    transform: scaleX(1.025);
-  }
-
-  .nf__home-face {
-    position: absolute;
-    inset: 0;
-    border-radius: var(--radius);
-    background: #fff;
-  }
-
-  .nf__home-icon,
-  .nf__home-label {
-    position: relative;
   }
 
   .nf__home-icon {
     width: 0.9em;
     height: 0.9em;
-  }
-
-  .nf__home:hover {
-    transform: translateY(calc(-3 * var(--u)));
-  }
-
-  .nf__home:hover::before {
-    transform: scaleX(1.075);
-  }
-
-  .nf__home:hover::after {
-    transform: scaleX(1.04);
-  }
-
-  .nf__home:active {
-    transform: translateY(0) scale(0.985);
-  }
-
-  /* The global focus ring squares off the radius; keep the button's own. */
-  .nf__home:focus-visible {
-    border-radius: var(--radius);
-    outline-offset: max(6px, calc(8 * var(--u)));
   }
 
   /* ---- Load-in (end state = natural state) ---- */
@@ -234,16 +161,6 @@ const glow = glowBackground();
     .nf__line {
       font-size: clamp(22px, 5.6vw, 28px);
     }
-
-    /* Mostly touch screens here, where a tap leaves :hover stuck: keep the resting fringes
-       (as the download button does). */
-    .nf__home:hover::before {
-      transform: scaleX(1.05);
-    }
-
-    .nf__home:hover::after {
-      transform: scaleX(1.025);
-    }
   }
 
   /* Short landscape screens (phones on their side): keep it to one screen. */
@@ -257,21 +174,9 @@ const glow = glowBackground();
     }
   }
 
-  @media (prefers-reduced-motion: reduce) {
-    .nf__home:hover {
-      transform: none;
-    }
-  }
-
   @media (forced-colors: active) {
-    .nf__glow,
-    .nf__home::before,
-    .nf__home::after {
+    .nf__glow {
       display: none;
-    }
-
-    .nf__home {
-      border: 2px solid ButtonText;
     }
   }
 </style>
