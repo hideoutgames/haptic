@@ -2,17 +2,21 @@
  * Geometry of the header mark: the Block Berthold-style "H" and the bar it
  * turns into when the menu opens.
  *
- * The bar is the H turned on its side. While the menu opens the H makes a
- * quarter turn clockwise, and as it turns its stems slide together (the
- * crossbar shortens and the counters close) and it settles a little lower as
- * the 30 × 10.75 bar. The shape is one 12-vertex rounded polygon drawn in the
- * H's own frame and then turned, so the chromatic-aberration fringes (the
+ * The bar is the H turned on its side. The mark only ever turns clockwise:
+ * opening the menu turns the H a quarter turn into the bar, and closing it
+ * carries on for another quarter turn back into the H, so open and close
+ * together read as one half turn (the H looks the same upside down). As it
+ * turns, its stems slide together (the crossbar shortens and the counters
+ * close) and it settles a little lower as the 30 × 10.75 bar, then the other
+ * way on the next quarter. The shape is one 12-vertex rounded polygon drawn in
+ * the H's own frame and then turned, so the chromatic-aberration fringes (the
  * polygon dilated across the stems) turn with it: beside the H, above and
  * below the bar, with no cross-fade between the two.
  *
- * logoPaths(t) takes the morph's progress (0 = H, 1 = bar, already eased with
- * MORPH.ease by header.ts), so the same function draws the static markup on
- * the server and every frame of the morph in the browser, in either direction.
+ * logoPaths(phase) takes the mark's position in quarter turns (0 = H, 1 =
+ * bar, 2 = the H again after half a turn, 3 = the bar, 4 = back to the start;
+ * header.ts eases it), so the same function draws the static markup on the
+ * server and every frame of the turn in the browser.
  *
  * Units are CSS px relative to the white ink's top-left corner at t = 0
  * (25 × 30), measured from the designer's clean export of the logo.
@@ -45,9 +49,9 @@ export const FILTER_REGION = { x: -15.5, y: -8, w: 56, h: 58 };
 export const BLUR = { ink: 0.25, fringe: 0.55 };
 
 /**
- * Timing of a full H → bar (or bar → H) morph, for header.ts: a prompt but
+ * Timing of one quarter turn (H → bar or bar → H), for header.ts: a prompt but
  * gentle start and a long, soft landing (the standard UI curve,
- * cubic-bezier(0.4, 0, 0.2, 1)), in both directions.
+ * cubic-bezier(0.4, 0, 0.2, 1)).
  */
 export const MORPH = { duration: 0.55, ease: cubicBezier(0.4, 0, 0.2, 1) };
 
@@ -148,6 +152,21 @@ function dilate(v: Vertex[], f: Fringe, k: number, counter: number): Vertex[] {
   return v.map(([x, y, r], n) => [x + dx[n], y, r]);
 }
 
+/**
+ * The same polygon turned half round the H's centre, with its vertices
+ * renumbered so each keeps its role (vertex 0 is still the top-left corner).
+ * Drawn half a turn further on, it is the upright H again: the second quarter
+ * of each half turn morphs towards this one, so the H lands upright (the
+ * crossbar sits a little above the middle, so the plain H would land a pixel
+ * off). The bar is symmetric, so both halves meet it in the same place.
+ */
+function halfTurned(v: Vertex[]): Vertex[] {
+  return v.map((_, n) => {
+    const [x, y, r] = v[(n + 6) % 12];
+    return [2 * CX - x, 2 * CY - y, r];
+  });
+}
+
 /** Turn the polygon by `angle` round the H's centre and move it down by `dy`. */
 function place(v: Vertex[], angle: number, dy: number): Vertex[] {
   const c = Math.cos(angle);
@@ -194,16 +213,25 @@ export interface LogoPaths {
 }
 
 /**
- * Path data for the three stacked layers (red below amber below white) at
- * morph progress t. The turn, the drop and the change of shape all run on t
- * itself, in step: a third of the way round the H is a third of the way to
- * the bar. So the whole morph is one motion with the tween's easing, the same
- * forwards, backwards and when turned round mid-way.
+ * Path data for the three stacked layers (red below amber below white) with the
+ * mark `phase` quarter turns round (any number; it repeats every 4). The turn,
+ * the drop and the change of shape all run on the phase itself, in step: a
+ * third of the way round the H is a third of the way to the bar. So each
+ * quarter turn is one motion with the tween's easing.
  */
-export function logoPaths(t: number): LogoPaths {
-  const angle = (Math.PI / 2) * t;
+export function logoPaths(phase: number): LogoPaths {
+  const p = ((phase % 4) + 4) % 4;
+  // How far the shape is from the H (0) towards the bar (1): up over the first
+  // quarter of each half turn, back down over the second.
+  const q = p % 2;
+  const t = q <= 1 ? q : 2 - q;
+  const angle = (Math.PI / 2) * p;
   const dy = BAR.drop * t;
   const { v, counter } = vertices(t);
-  const layer = (fringe: Fringe) => roundedPath(place(dilate(v, fringe, t, counter), angle, dy));
+  // The H this quarter starts from or lands on: upright once it has turned a
+  // whole number of turns, upside down halfway (see halfTurned).
+  const landsHalfway = p > 1 && p <= 3;
+  const shape = landsHalfway ? halfTurned(v) : v;
+  const layer = (fringe: Fringe) => roundedPath(place(dilate(shape, fringe, t, counter), angle, dy));
   return { white: layer(WHITE), amber: layer(AMBER), red: layer(RED) };
 }
