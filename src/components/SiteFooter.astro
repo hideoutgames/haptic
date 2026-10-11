@@ -6,8 +6,10 @@
  *
  * The text row uses the shared --u scale; the giant word is sized in vw, so its
  * crop stays identical at any width and it always runs off the right edge.
- * The row is centred where the mockup's footer line sits, and the giant word's
- * top margin keeps the footer at the mockup's overall height.
+ * The row is centred where the mockup's footer line sits. The giant word sits
+ * 24u higher than in the mockup (its top 110u below the footer top, not 134u),
+ * so the footer is 260.5u tall at 1280 instead of 284.5u: the room lets the
+ * whole download section fit above it on the last screen (DownloadSection).
  *
  * Legal: Bru Development ENK is the company; Haptic is an unregistered
  * trademark (™, not ®). The year is computed when the site is built.
@@ -129,12 +131,12 @@ const LINKS = [
 
   /* Giant word: 428px at 1280 (33.4vw). Only its top half shows (150.5px, 11.76vw).
      Above the grain layers: the mockup's glyph is a flat cut-out, the grain stays around it.
-     Its top sits 134u below the footer top, as in the mockup. */
+     Its top sits 110u below the footer top (134u in the mockup: see above). */
   .giant {
     position: relative;
     z-index: var(--z-media);
     height: calc(100vw * 150.5 / 1280);
-    margin-top: calc(134 * var(--u) - var(--row-mid) - var(--text-size) * var(--text-lh) / 2);
+    margin-top: calc(110 * var(--u) - var(--row-mid) - var(--text-size) * var(--text-lh) / 2);
     overflow: hidden;
     color: var(--c-giant);
     user-select: none;

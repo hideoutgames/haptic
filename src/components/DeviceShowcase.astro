@@ -388,7 +388,8 @@ const sizesFor = (stacked: string, side: string) => `${STACKED_QUERY} ${stacked}
   }
 
   /* ---- Tablet portrait and phones: copy on top, the devices stacked below ----
-     Same query as STACKED_QUERY (showcase/layout.ts). The stage becomes a
+     Same query as STACKED_QUERY (showcase/layout.ts), which SiteHeader.astro
+     repeats too (its fade ends at this heading). The stage becomes a
      column: the copy, then the rig, which takes the height that is left. The
      group of devices is sized to that space (container units), so the layout
      holds for any screen shape and any wrapping of the copy, and it is
@@ -415,6 +416,8 @@ const sizesFor = (stacked: string, side: string) => `${STACKED_QUERY} ${stacked}
       left: auto;
       flex: none;
       width: auto;
+      /* SiteHeader.astro's stacked --fade-y is sized to end at this offset:
+         change the two together. */
       margin: calc(clamp(68px, 11svh, 92px) + env(safe-area-inset-top, 0px)) var(--gutter) 0;
     }
 

@@ -234,12 +234,16 @@ const columns = [
   .menu__foot {
     grid-column: 1 / -1;
     /* Footer row: four empty rows (131px in the mockup) below the last page
-       link. On short windows (landscape phones and tablets, squat browser
-       windows) this gap gives way first, down to one row, so Hideout and
-       Norway fit without scrolling the panel. The panel may be as tall as
-       .menu__body's max-height; everything in it but this gap takes
-       263.2 * --m (padding 23.4 + 14.8, titles 33 + 27, four links 4 × 33,
-       footer 33), plus 77 * --m above the panel; 1px spare for rounding. */
+       link. On short windows wider than 820px (squat desktop windows,
+       landscape tablets and wide landscape phones) this gap gives way first,
+       down to one row, so Hideout and Norway fit without scrolling the panel.
+       The panel may be as tall as .menu__body's max-height; everything in it
+       but this gap takes 263.2 * --m (padding 23.4 + 14.8, titles 33 + 27,
+       four links 4 × 33, footer 33), plus 77 * --m above the panel; 1px spare
+       for rounding. The four links are SiteHeader.astro's `pages`: change
+       340.2 with them. At 820px and below the block further down takes over
+       (a fixed 44px gap, 40px tap targets), and a short landscape phone may
+       scroll the panel instead. */
     margin-top: clamp(
       calc(33 * var(--m)),
       calc(100dvh - var(--safe-top) - 340.2 * var(--m) - 17px),
@@ -316,6 +320,16 @@ const columns = [
     :global([data-open]) .menu__notch,
     :global([data-open]) .menu__body {
       transition-delay: 0s !important;
+    }
+
+    /* Opening: the panel turns visible at once, as it does with motion (the
+       0.12s above would stretch the visibility switch too, and global.css's
+       reduced-motion rule would still make it 0.001ms). header.ts moves focus
+       into the panel straight after opening it, and focus() does nothing on
+       an element that is still hidden. The panel has no transform here, so
+       only the content's fade is left, and that keeps its 0.12s. */
+    :global([data-open]) .menu {
+      transition-duration: 0s !important;
     }
   }
 </style>

@@ -6,8 +6,8 @@
  * a line of copy is read. In screens of scroll from the start of the pin
  * (the table `T`; negative is before it, while the section scrolls in):
  *
- *   -0.45 – 0.30   the MacBook comes up with the page, shut, turning from
- *                  three-quarter view to face front (the turn ends at 0.20).
+ *   -0.45 – 0.30   the MacBook comes up with the page, starting shut, turning
+ *                  from three-quarter view to face front (the turn ends at 0.20).
  *                  It is still rising when the pin stops the page, and
  *                  glides on to rest instead of stopping with it.
  *   -0.22 – 0.60   the lid lifts while the MacBook is still turning and
@@ -127,9 +127,10 @@ const EASE = {
    */
   lid: 'sine.inOut',
   /**
-   * Entrances from outside the frame (the iPad, the iPhone): already moving
-   * as they come into view, then slowing evenly to rest, like something
-   * sliding to a stop. (A steeper ease-out would whip them in from the edge.)
+   * Entrances from outside the frame (the iPad, the iPhone, and the stacked
+   * 2D group as it follows them): already moving as they come into view, then
+   * slowing evenly to rest, like something sliding to a stop. (A steeper
+   * ease-out would whip them in from the edge.)
    */
   enter: 'power1.out',
   /** Fades, the copy and the camera. */
@@ -178,6 +179,8 @@ const at = (t: number) => t - T.arrive;
  */
 const PERSPECTIVE = 1800;
 const TURN_2D = { mac: -24, ipad: 62, iphone: 70 };
+/** The 2D iPad starts a little larger (nearer the viewer) than at rest. */
+const START_SCALE_2D = { ipad: 1.04 };
 
 /** The scene's drawing buffer may be asked about only in these query forms. */
 const query = new URLSearchParams(location.search);
@@ -296,12 +299,12 @@ export function initShowcase(root: HTMLElement): void {
     // Camera: a very slow dolly-in over the whole film, for depth.
     tl.fromTo(S, { dolly: 0 }, { dolly: 1, ease: EASE.soft, duration: T.end - T.arrive }, 0);
 
-    // 1. The MacBook comes up with the page, shut, and turns from three-quarter
-    // view to face front (the 2D picture rises and turns a little). The rise
-    // runs on past the start of the pin: as the page stops, the MacBook keeps
-    // gliding up for a moment and settles. The lid starts to open as the turn
-    // settles, so arrival and opening read as one gesture; the display fades
-    // on once the lid is past SCREEN_ON_ANGLE.
+    // 1. The MacBook comes up with the page, starting shut, and turns from
+    // three-quarter view to face front (the 2D picture rises and turns a
+    // little). The rise runs on past the start of the pin: as the page stops,
+    // the MacBook keeps gliding up for a moment and settles. The lid starts to
+    // open while the MacBook is still turning, so arrival and opening read as
+    // one gesture; the display fades on once the lid is past SCREEN_ON_ANGLE.
     tl.fromTo(
       mac,
       { yPercent: 16, scale: 0.92, rotationX: 14, rotationY: TURN_2D.mac, transformPerspective: PERSPECTIVE, transformOrigin: '50% 100%' },
@@ -327,24 +330,26 @@ export function initShowcase(root: HTMLElement): void {
     tl.fromTo(
       ipad,
       {
-        xPercent: () => offStageLeft(ipad, TURN_2D.ipad, 1.04),
+        xPercent: () => offStageLeft(ipad, TURN_2D.ipad, START_SCALE_2D.ipad),
         yPercent: 6,
-        scale: 1.04,
+        scale: START_SCALE_2D.ipad,
         rotationY: TURN_2D.ipad,
         transformPerspective: PERSPECTIVE,
       },
       { xPercent: 0, yPercent: 0, scale: 1, rotationY: 0, ease: EASE.enter, duration: T.ipadDur },
       at(T.ipad),
     );
-    tl.fromTo(ipad, { opacity: 0 }, { opacity: 1, duration: T.ipadDur * 0.05 }, at(T.ipad));
+    tl.fromTo(ipad, { opacity: 0 }, { opacity: 1, ease: EASE.soft, duration: T.ipadDur * 0.05 }, at(T.ipad));
     tl.fromTo(S, { ipad: 0 }, { ipad: 1, ease: EASE.enter, duration: T.ipadDur }, at(T.ipad));
     // Stacked layout: the group of devices (centred under the copy) follows
-    // as they join. The CSS holds the offsets; on desktop they are 0.
+    // as they join, on the same curve as the device that is joining, so the
+    // composition stays centred all the way. The CSS holds the offsets; on
+    // desktop they are 0.
     const settle = (name: string) => parseFloat(getComputedStyle(group).getPropertyValue(name)) || 0;
     tl.fromTo(
       group,
       { yPercent: () => settle('--settle-mac') },
-      { yPercent: () => settle('--settle-ipad'), duration: T.ipadDur },
+      { yPercent: () => settle('--settle-ipad'), ease: EASE.enter, duration: T.ipadDur },
       at(T.ipad),
     );
 
@@ -357,9 +362,9 @@ export function initShowcase(root: HTMLElement): void {
       { xPercent: 0, yPercent: 0, scale: 1, rotationY: 0, ease: EASE.enter, duration: T.phoneDur },
       at(T.phone),
     );
-    tl.fromTo(iphone, { opacity: 0 }, { opacity: 1, duration: T.phoneDur * 0.3 }, at(T.phone));
+    tl.fromTo(iphone, { opacity: 0 }, { opacity: 1, ease: EASE.soft, duration: T.phoneDur * 0.3 }, at(T.phone));
     tl.fromTo(S, { phone: 0 }, { phone: 1, ease: EASE.enter, duration: T.phoneDur }, at(T.phone));
-    tl.to(group, { yPercent: 0, duration: T.phoneDur }, at(T.phone));
+    tl.to(group, { yPercent: 0, ease: EASE.enter, duration: T.phoneDur }, at(T.phone));
 
     // Copy: the old line is gone completely before the next one fades in.
     const swap = (from: HTMLElement, to: HTMLElement, t: number) => {
@@ -379,7 +384,7 @@ export function initShowcase(root: HTMLElement): void {
       window.scrollTo(0, scrollY);
     }
 
-    // `?debug3d`: the state, the timelines and (once it exists) the scene, for tests.
+    // `?debug3d`: the state, the timeline, the pin and (once it exists) the scene, for tests.
     const debug = query.has('debug3d') ? { scene: null as ShowcaseScene | null, state: S, timeline: tl, pin, gsap } : null;
     if (debug) (window as unknown as { __haptic3d?: unknown }).__haptic3d = debug;
 

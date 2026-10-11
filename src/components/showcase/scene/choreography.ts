@@ -52,7 +52,10 @@ export interface Layout {
   mac: { x: number; z: number; yaw: number; open: number };
   ipad: Pose;
   phone: Pose;
-  /** As the MacBook arrives (shut and turned): how far left it sits (mm), its start yaw and size. */
+  /**
+   * Where the MacBook starts its arrival (shut, turned three-quarter): how far
+   * left it sits (mm), its start yaw and size; all three ease to rest with `turn`.
+   */
   entrance: { shiftX: number; yaw: number; scale: number };
   /**
    * How the iPad arrives: it slides in on its stand along the ground, from the
@@ -148,7 +151,8 @@ export interface Placement {
  * neither popping in partly on screen (too short a way in) nor spending the
  * first part of its beat out of sight (too long a one). Where that is depends
  * on the shape of the screen, so the scene fits both to the canvas
- * (`fitStarts` in index.ts); the layout gives only where those searches start.
+ * (`fitStarts` in index.ts); the layout's `arrival.dx` (iPad) and `PHONE_DROP`
+ * (iPhone) give only where those searches start.
  */
 export interface Starts {
   /** How far left of its resting place the iPad starts its slide. */
