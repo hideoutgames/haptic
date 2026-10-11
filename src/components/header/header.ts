@@ -24,7 +24,7 @@ function initHeader(header: HTMLElement, button: HTMLButtonElement, menu: HTMLEl
   };
 
   let open = false;
-
+  /** The menu was last opened with a mouse or a tap (not Enter or Space). */
   let openedWithPointer = false;
 
   // ---- H <-> bar morph ----------------------------------------------------
@@ -90,6 +90,35 @@ function initHeader(header: HTMLElement, button: HTMLButtonElement, menu: HTMLEl
     });
   }
 
+  // ---- Focus into the open menu ------------------------------------------
+  let focusFrame = 0;
+
+  /**
+   * Move focus into the menu that just opened. A keyboard open goes to the
+   * first link, with its ring. A pointer open goes to the panel itself
+   * (tabindex -1, never a ring): screen readers still enter the menu and the
+   * next Tab still lands on the first link, but no link shows a keyboard ring
+   * nobody asked for (browsers draw one on any focus() that follows a key
+   * press, so a click after closing with Escape would otherwise get it).
+   *
+   * The panel turns visible the moment `data-open` is set, in every motion
+   * mode (MenuPanel.astro), so focus normally lands at once. Should anything
+   * still delay that switch, focus() on the hidden panel does nothing: then
+   * try again on the next frames, for as long as focus has not moved on.
+   */
+  function focusIntoMenu() {
+    cancelAnimationFrame(focusFrame);
+    const target = (!openedWithPointer && menu.querySelector<HTMLElement>('a[href]')) || menu;
+    const from = document.activeElement;
+    let frames = 0;
+    const attempt = () => {
+      if (!open || document.activeElement !== from) return;
+      target.focus({ preventScroll: true });
+      if (document.activeElement !== target && ++frames < 30) focusFrame = requestAnimationFrame(attempt);
+    };
+    attempt();
+  }
+
   // ---- Open / close -------------------------------------------------------
   function setOpen(next: boolean, { restoreFocus = false } = {}) {
     if (next === open) return;
@@ -100,7 +129,7 @@ function initHeader(header: HTMLElement, button: HTMLButtonElement, menu: HTMLEl
     morphTo(open ? 1 : 0);
 
     if (open) {
-      menu.querySelector<HTMLElement>('a[href]')?.focus({ preventScroll: true });
+      focusIntoMenu();
     } else if (restoreFocus) {
       // Escape after a mouse/touch open: give focus back without a focus ring.
       button.toggleAttribute('data-quiet-focus', openedWithPointer);

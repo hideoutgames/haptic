@@ -14,7 +14,7 @@ export const SCREEN_ON_ANGLE = 70;
  * motion looks like the curve the timeline gave it.
  */
 export interface SceneState {
-  /** MacBook arrives: rises, closed, from below the frame. */
+  /** MacBook arrives: rises from below the frame (it starts shut; the lid opens during the rise, see `open`). */
   rise: number;
   /** MacBook turns from three-quarter view to face front as it rises. */
   turn: number;

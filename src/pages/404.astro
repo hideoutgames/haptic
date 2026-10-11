@@ -88,8 +88,10 @@ const glow = glowBackground();
   }
 
   /* The hero's glow, dimmed to a hint and scaled with the "404" (1280u wide at the
-     desktop size, as in the hero). Its title band (y 325 of 960 in the mockup, the
-     centre of HAPTIC) sits on the centre of the digits' line box, the first fs of the column. */
+     desktop size, as in the hero, so one glow pixel is fs / 300). Its title band sits on
+     the centre of the digits' line box, the first fs of the column: y 325 of the glow =
+     the desktop hero's title centre, 239u + 172.5u / 2 (the phone hero aligns y 315
+     instead, to fit its stretched glow between its title and the editor window). */
   .nf__glow {
     position: absolute;
     z-index: var(--z-bg);
@@ -97,7 +99,7 @@ const glow = glowBackground();
     left: 50%;
     width: calc(var(--fs) * 1280 / 300);
     height: calc(var(--fs) * 1280 / 300 * var(--glow-ratio));
-    translate: -50% calc(-100% * 325 / 960);
+    translate: -50% calc(var(--fs) * -325 / 300);
     background-image: var(--glow);
     opacity: 0.38;
     /* The magenta floor is wider than the box: feather the sides where it is cut. */

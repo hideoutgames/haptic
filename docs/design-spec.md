@@ -51,11 +51,12 @@ Measured on the clean title export:
   (over the glow), i.e. roughly `rgb(24 24 24 / 0.86)` + `backdrop-filter: blur(24px) saturate(1.2)`. No visible border; soft shadow.
 - Padding ≈ 24.5 left/right. Two columns: left at x = 416, right column at x ≈ 639.
 - Type: Onest 500, ≈ 18px, white, line pitch 33px.
-- Content (newest closeup version):
-  - Left column: **Haptic Engine** (y ≈ 109.5) · (gap) · **Pages:** (y ≈ 170) · Home (203) · Pricing & Download (236) · Support (269) · About (302)
-  - Right column: **Learning Center** (y ≈ 109.5) · Coming soon.... (y ≈ 170)
+- Content (as built; the newest closeup also had a "Pages:" label and "Pricing & Download"):
+  - Left column: **Haptic Engine** (y ≈ 109.5) · Home · Download · Support · About
+  - Right column: **Learning Center** (y ≈ 109.5) · Documentation (`#docs` placeholder until the docs are online)
   - Footer row (y ≈ 431): **Hideout** (left) · **🇳🇴 Norway** (right-aligned; mockup literally says "(NorwegianFlag) Norway", render a Norwegian flag, emoji or inline SVG)
-- Page content behind is **not** dimmed.
+- While the menu is open the page behind is tinted with `rgb(0 0 0 / 0.35)` (`.page-tint` in SiteHeader). The tint fades with
+  the panel and takes no pointers.
 
 ## 2. Hero (0 → ~1263)
 
@@ -138,6 +139,12 @@ Devices (mockup composition, the final state of the scroll animation):
 OS-aware primary button (official App Store / Google Play badges for mobile, custom desktop buttons),
 the Haptic Pro note and "View Pricing for more details.", then an "Other platforms" row.
 
+All focus is on the download button. The page's last screen holds the whole section above the footer, so the stack is
+set close (at 1280: lead 18 below the heading, button 40 below the lead, fine print 18 below the button, the other
+platforms 40 below that, 40 to the footer), and the heading lands clear of the H and its fade (at 115u on a 16:10
+window; the fade ends at 106u). From 1000px up the "Other platforms" label sits beside the chips on one line, with no
+rule above it; narrower screens keep the label over the chips. Phones keep at least the button clear of the H.
+
 ## 5. Footer (≈ 2100 → 2384.5 page end)
 
 - Dark (`#0a0908`) with grain.
@@ -147,6 +154,8 @@ the Haptic Pro note and "View Pricing for more details.", then an "Other platfor
 - **Giant "HAPTIC"**: Block Berthold, colour `#676767`, **≈ 428px** (≈ 33.4vw at 1280), starts at x ≈ −14.8 (so the H's ink starts at x ≈ 1.5),
   cap top at y ≈ 2234 and baseline ≈ 150px **below** the page bottom, so only the top ~half of the letters shows and the word runs off the right edge (the C is cut).
 - The page ends at 2384.5 (mockup height).
+- As built, the giant word sits 24px (at 1280) higher than in the mockup: its top 110 below the footer top instead of 134, so
+  the footer is 260.5 tall instead of 284.5. The room lets the download section fit whole above it on the last screen.
 
 ## Extra placeholder screenshots
 
