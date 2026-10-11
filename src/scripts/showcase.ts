@@ -308,10 +308,12 @@ export function initShowcase(root: HTMLElement): void {
             height,
             stacked,
             // The MacBook (not the whole group) fills this: its left edge clears
-            // the heading, and its right side bleeds off the screen, as in the mockup.
+            // the heading, and its right side bleeds off the frame (the screen, up
+            // to 1600px wide), as in the mockup.
             area: {
               left: r.left - s.left + 5 * k,
-              right: width + 130 * k,
+              // Just inside the rig's right edge, which bleeds off the frame (see the CSS).
+              right: r.right - s.left - 4 * k,
               top: Math.max(76, ay - 455 * k),
               bottom: Math.min(height - 20, ay + 260 * k),
               alignX: 'right' as const,
