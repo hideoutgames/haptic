@@ -383,22 +383,28 @@ const skySide = `--sky-left: ${skyEdges.left}; --sky-right: ${skyEdges.right}; -
     position: relative;
   }
 
+  /* The copies are blurred text shadows of transparent glyphs, not a CSS
+     filter: a filtered element is rasterised tile by tile, and at some zoom
+     levels the tiles' edges showed as thin coloured lines around the word. A
+     shadow is blurred from the whole word in every tile. (A shadow's blur
+     radius is twice the deviation `filter: blur()` takes, hence 2.6 for 1.3.) */
   .portable__ca {
     position: absolute;
     inset: 0;
     transform: scaleY(var(--cy));
     transform-origin: 50% 62%;
-    filter: blur(calc(1.3 * var(--p)));
+    color: transparent;
+    text-shadow: 0 0 calc(2.6 * var(--p)) var(--ca-color);
   }
 
   .portable__ca--red {
     --cy: 1.42;
-    color: var(--c-red);
+    --ca-color: var(--c-red);
   }
 
   .portable__ca--amber {
     --cy: 1.15;
-    color: var(--c-amber);
+    --ca-color: var(--c-amber);
   }
 
   .scroll {
