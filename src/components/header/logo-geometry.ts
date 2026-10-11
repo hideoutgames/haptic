@@ -67,10 +67,11 @@ const R_FILLET = 2;
 
 /**
  * Bar (open state): as long as the H is tall (30) and 10.75 thick, its centre
- * 10 px below the H's so it sits on the H's baseline. In the H's frame, before
- * the quarter turn, it is a 10.75-wide upright slab.
+ * 7.5 px below the H's, a little above the H's baseline (sitting right on it,
+ * the bar read as too low). In the H's frame, before the quarter turn, it is a
+ * 10.75-wide upright slab.
  */
-const BAR = { h: 10.75, r: 1.8, drop: 10.075 };
+const BAR = { h: 10.75, r: 1.8, drop: 7.5 };
 
 /** Centre of the H, which the turn pivots round. */
 const CX = W / 2;
