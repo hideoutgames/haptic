@@ -1,9 +1,10 @@
 /**
- * Header behaviour: menu toggle (with the H → bar morph) plus keyboard and
- * outside-click handling. The menu works on its own; GSAP is only fetched, in
- * the background, to tween the logo morph.
+ * Header behaviour: menu toggle (with the H → bar morph), keyboard and
+ * outside-click handling, and the strength of the fade under the H. The menu
+ * works on its own; GSAP is only fetched, in the background, to tween the
+ * logo morph.
  */
-import { logoPaths } from './logo-geometry';
+import { logoPaths, MORPH } from './logo-geometry';
 
 type Gsap = (typeof import('../../scripts/motion'))['gsap'];
 
@@ -51,10 +52,11 @@ function initHeader(header: HTMLElement, button: HTMLButtonElement, menu: HTMLEl
       renderLogo();
       return;
     }
+    // Same curve both ways; a reversal mid-morph covers only the distance left.
     gsap.to(morph, {
       t: target,
-      duration: 0.32,
-      ease: 'power2.inOut',
+      duration: MORPH.duration * Math.abs(target - morph.t),
+      ease: MORPH.ease,
       onUpdate: renderLogo,
     });
   }
@@ -110,4 +112,29 @@ function initHeader(header: HTMLElement, button: HTMLButtonElement, menu: HTMLEl
   window.addEventListener('pageshow', (event) => {
     if (event.persisted) setOpen(false);
   });
+
+  // ---- Fade under the H -----------------------------------------------------
+  // Off at the very top (the hero's glow shows untouched), full once the page
+  // has scrolled FADE_IN px, smoothly in between. Lenis scrolls the window, so
+  // plain scroll events follow it.
+  const FADE_IN = 140;
+  let scrim = -1;
+  let queued = false;
+  const updateScrim = () => {
+    queued = false;
+    const x = Math.min(1, Math.max(0, window.scrollY / FADE_IN));
+    const next = Math.round(x * x * (3 - 2 * x) * 1000) / 1000;
+    if (next !== scrim) header.style.setProperty('--scrim', String((scrim = next)));
+  };
+  window.addEventListener(
+    'scroll',
+    () => {
+      if (!queued) {
+        queued = true;
+        requestAnimationFrame(updateScrim);
+      }
+    },
+    { passive: true },
+  );
+  updateScrim();
 }

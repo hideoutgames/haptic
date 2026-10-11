@@ -1,10 +1,10 @@
 ---
 /**
  * The header mark: an "H" drawn as stacked SVG paths (red fringe, amber fringe,
- * white ink) that morphs into the menu bar. Path data comes from
+ * white ink) that turns into the menu bar. Path data comes from
  * logo-geometry.ts; header.ts re-renders it while the menu opens and closes.
  */
-import { BLUR, LOGO_VIEWBOX as vb, logoPaths } from './logo-geometry';
+import { BLUR, FILTER_REGION as fr, LOGO_VIEWBOX as vb, logoPaths } from './logo-geometry';
 
 const paths = logoPaths(0);
 ---
@@ -16,10 +16,10 @@ const paths = logoPaths(0);
   focusable="false"
 >
   <defs>
-    <filter id="logo-ink" filterUnits="userSpaceOnUse" x={vb.x} y={vb.y} width={vb.w} height={vb.h}>
+    <filter id="logo-ink" filterUnits="userSpaceOnUse" x={fr.x} y={fr.y} width={fr.w} height={fr.h}>
       <feGaussianBlur stdDeviation={BLUR.ink}></feGaussianBlur>
     </filter>
-    <filter id="logo-fringe" filterUnits="userSpaceOnUse" x={vb.x} y={vb.y} width={vb.w} height={vb.h}>
+    <filter id="logo-fringe" filterUnits="userSpaceOnUse" x={fr.x} y={fr.y} width={fr.w} height={fr.h}>
       <feGaussianBlur stdDeviation={BLUR.fringe}></feGaussianBlur>
     </filter>
   </defs>
@@ -31,7 +31,8 @@ const paths = logoPaths(0);
 <style>
   .logo {
     position: absolute;
-    /* viewBox is 44 wide so the svg's left edge lands on a whole CSS px (blur filters snap to them) */
+    /* viewBox is 44 wide so the svg's left edge lands on a whole CSS px (blur filters snap to them);
+       the mark reaches past it while it turns, hence overflow: visible */
     left: 50%;
     top: calc(7 * var(--m));
     width: calc(44 * var(--m));

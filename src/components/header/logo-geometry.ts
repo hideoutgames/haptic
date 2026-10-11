@@ -1,35 +1,55 @@
 /**
  * Geometry of the header mark: the Block Berthold-style "H" and the bar it
- * morphs into when the menu opens.
+ * turns into when the menu opens.
  *
- * Everything is one 12-vertex rounded polygon whose vertices interpolate
- * between the H and the bar (t = 0 → 1), so the same function draws the static
- * markup on the server and every frame of the morph in the browser. The
- * chromatic-aberration fringes are the same polygon dilated: horizontally
- * for the H, vertically for the bar, cross-fading with t.
+ * The bar is the H turned on its side. While the menu opens the H makes a
+ * quarter turn clockwise, its stems slide together (the crossbar shortens and
+ * the counters close) and it settles a little lower as the 30 × 10.75 bar. The
+ * shape is one 12-vertex rounded polygon drawn in the H's own frame and then
+ * turned, so the chromatic-aberration fringes (the polygon dilated across the
+ * stems) turn with it: beside the H, above and below the bar, with no
+ * cross-fade between the two.
+ *
+ * logoPaths(t) takes the morph's progress (0 = H, 1 = bar, already eased by
+ * the tween, see MORPH), so the same function draws the static markup on the
+ * server and every frame of the morph in the browser, in either direction.
  *
  * Units are CSS px relative to the white ink's top-left corner at t = 0
  * (25 × 30), measured from the designer's clean export of the logo.
  */
 
 export interface Fringe {
-  /** Horizontal growth on the outside of the stems. */
+  /** Growth on the outside of the stems (beside the H, above and below the bar). */
   outer: number;
-  /** Horizontal growth on the counter side (smaller than outer in the mockup). */
+  /** Growth into the counters (smaller than outer in the mockup). */
   inner: number;
-  /** Vertical growth of the bar's top and bottom edges. */
-  vertical: number;
+  /** Outer growth once the H has become the bar (measured on the bar). */
+  bar: number;
 }
 
-export const WHITE: Fringe = { outer: 0, inner: 0, vertical: 0 };
-export const AMBER: Fringe = { outer: 2.4, inner: 1.7, vertical: 2.4 };
-export const RED: Fringe = { outer: 4.9, inner: 3.4, vertical: 4.7 };
+export const WHITE: Fringe = { outer: 0, inner: 0, bar: 0 };
+export const AMBER: Fringe = { outer: 2.4, inner: 1.7, bar: 2.4 };
+export const RED: Fringe = { outer: 4.9, inner: 3.4, bar: 4.7 };
 
 /** SVG viewBox: ink origin at (0, 0), room for fringes and blur on every side. */
 export const LOGO_VIEWBOX = { x: -9.5, y: -2, w: 44, h: 39 };
 
+/**
+ * Blur filter region (user units). Larger than the viewBox because the mark
+ * reaches past it on the diagonal mid-turn (the svg's overflow is visible);
+ * offset from the viewBox by whole px so the blur stays aligned to pixels.
+ */
+export const FILTER_REGION = { x: -15.5, y: -8, w: 56, h: 58 };
+
 /** Gaussian blur (user units) that softens the white ink and the fringe copies. */
 export const BLUR = { ink: 0.25, fringe: 0.55 };
+
+/**
+ * Timing of a full H → bar (or bar → H) morph, for header.ts: a prompt but
+ * gentle start and a long, soft landing (the standard UI curve,
+ * cubic-bezier(0.4, 0, 0.2, 1)), in both directions.
+ */
+export const MORPH = { duration: 0.55, ease: cubicBezier(0.4, 0, 0.2, 1) };
 
 // H silhouette
 const W = 25;
@@ -41,42 +61,116 @@ const R_OUTER = 1.1;
 const R_STEM_END = 0.9;
 const R_FILLET = 2;
 
-// Bar (open state): 30 × 10.6, bottom-aligned with the H
-const BAR = { x0: -2.5, x1: 27.5, y0: 19.7, y1: 30.45, r: 1.8, innerL: 12, innerR: 13 };
+/**
+ * Bar (open state): as long as the H is tall (30) and 10.75 thick, its centre
+ * 10 px below the H's so it sits on the H's baseline. In the H's frame, before
+ * the quarter turn, it is a 10.75-wide upright slab.
+ */
+const BAR = { h: 10.75, r: 1.8, drop: 10.075 };
+
+/** Centre of the H, which the turn pivots round. */
+const CX = W / 2;
+const CY = HEIGHT / 2;
+
+/**
+ * The stems slide together over this stretch of the morph's progress (the
+ * turn and the drop run over all of it). Starting a little late keeps the
+ * mark reading as an H while it tips over; finishing a little early lets the
+ * finished bar settle flat on its own instead of closing up as it lands.
+ * Played backwards (closing) the stems part as the bar starts to turn and the
+ * H rights itself last.
+ */
+const MERGE = { from: 0.14, to: 0.94 };
+
+/** Quintic smootherstep of t across [from, to]: no jolt at either end. */
+function smoother(t: number, from: number, to: number): number {
+  const x = Math.min(1, Math.max(0, (t - from) / (to - from)));
+  return x * x * x * (x * (x * 6 - 15) + 10);
+}
+
+/** CSS-style cubic-bezier timing function (x1, x2 in [0, 1]), solved with Newton steps. */
+function cubicBezier(x1: number, y1: number, x2: number, y2: number): (p: number) => number {
+  const cx = 3 * x1;
+  const bx = 3 * (x2 - x1) - cx;
+  const ax = 1 - cx - bx;
+  const cy = 3 * y1;
+  const by = 3 * (y2 - y1) - cy;
+  const ay = 1 - cy - by;
+  return (p) => {
+    if (p <= 0 || p >= 1) return Math.min(1, Math.max(0, p));
+    let u = p;
+    for (let n = 0; n < 8; n++) {
+      const x = ((ax * u + bx) * u + cx) * u - p;
+      const dx = (3 * ax * u + 2 * bx) * u + cx;
+      if (Math.abs(x) < 1e-5 || Math.abs(dx) < 1e-6) break;
+      u = Math.min(1, Math.max(0, u - x / dx));
+    }
+    return ((ay * u + by) * u + cy) * u;
+  };
+}
 
 type Vertex = [x: number, y: number, radius: number];
 
-/** The 12 polygon vertices at morph position t, before dilation. */
-function vertices(t: number): Vertex[] {
-  const m = (a: number, b: number) => a + (b - a) * t;
-  const { x0, x1, y0, y1, innerL, innerR, r } = BAR;
-  const sR = W - STEM;
+const mix = (a: number, b: number, k: number) => a + (b - a) * k;
+
+/**
+ * The 12 polygon vertices in the H's (unturned) frame with the stems merged by
+ * k, plus each counter's half-width (the room the inner fringes have).
+ */
+function vertices(k: number): { v: Vertex[]; counter: number } {
+  // Stems slide together until they meet in the middle as the slab.
+  const left = mix(0, CX - BAR.h / 2, k);
+  const right = mix(W, CX + BAR.h / 2, k);
+  const stemL = mix(STEM, CX, k);
+  const stemR = mix(W - STEM, CX, k);
+  // The counters close sideways with the stems and grow shallower faster,
+  // so they shrink to nothing instead of ending as slits between the stems.
+  const shallow = 1 - (1 - k) * (1 - k);
+  const top = mix(COUNTER_TOP_END, 0, shallow);
+  const bottom = mix(COUNTER_BOTTOM_START, HEIGHT, shallow);
+  const rOuter = mix(R_OUTER, BAR.r, k);
+  const rEnd = R_STEM_END * (1 - k);
+  const rFillet = R_FILLET * (1 - k);
   // prettier-ignore
-  return [
-    [m(0, x0),   m(0, y0),                       m(R_OUTER, r)],
-    [m(STEM, innerL), m(0, y0),                  m(R_STEM_END, 0)],
-    [m(STEM, innerL), m(COUNTER_TOP_END, y0),    m(R_FILLET, 0)],
-    [m(sR, innerR),   m(COUNTER_TOP_END, y0),    m(R_FILLET, 0)],
-    [m(sR, innerR),   m(0, y0),                  m(R_STEM_END, 0)],
-    [m(W, x1),   m(0, y0),                       m(R_OUTER, r)],
-    [m(W, x1),   m(HEIGHT, y1),                  m(R_OUTER, r)],
-    [m(sR, innerR),   m(HEIGHT, y1),             m(R_STEM_END, 0)],
-    [m(sR, innerR),   m(COUNTER_BOTTOM_START, y1), m(R_FILLET, 0)],
-    [m(STEM, innerL), m(COUNTER_BOTTOM_START, y1), m(R_FILLET, 0)],
-    [m(STEM, innerL), m(HEIGHT, y1),             m(R_STEM_END, 0)],
-    [m(0, x0),   m(HEIGHT, y1),                  m(R_OUTER, r)],
+  const v: Vertex[] = [
+    [left, 0, rOuter],
+    [stemL, 0, rEnd],
+    [stemL, top, rFillet],
+    [stemR, top, rFillet],
+    [stemR, 0, rEnd],
+    [right, 0, rOuter],
+    [right, HEIGHT, rOuter],
+    [stemR, HEIGHT, rEnd],
+    [stemR, bottom, rFillet],
+    [stemL, bottom, rFillet],
+    [stemL, HEIGHT, rEnd],
+    [left, HEIGHT, rOuter],
   ];
+  return { v, counter: (stemR - stemL) / 2 };
 }
 
-/** Push each vertex outward by the fringe's horizontal/vertical growth. */
-function dilate(v: Vertex[], f: Fringe, t: number): Vertex[] {
-  const o = f.outer * (1 - t);
-  const i = f.inner * (1 - t);
-  const y = f.vertical * t;
-  // x offset / y offset per vertex index
+/**
+ * Push each vertex sideways (in the H's frame) by the fringe's growth: outward
+ * on the outer edges, into the counters on the stems' inner edges. The inner
+ * growth never exceeds half a counter, so a closing counter never turns
+ * inside out.
+ */
+function dilate(v: Vertex[], f: Fringe, k: number, counter: number): Vertex[] {
+  const o = mix(f.outer, f.bar, k);
+  const i = Math.min(f.inner, counter);
   const dx = [-o, i, i, -i, -i, o, o, -i, -i, i, i, -o];
-  const dy = [-y, -y, -y, -y, -y, -y, y, y, y, y, y, y];
-  return v.map(([x, yy, r], k) => [x + dx[k], yy + dy[k], r]);
+  return v.map(([x, y, r], n) => [x + dx[n], y, r]);
+}
+
+/** Turn the polygon by `angle` round the H's centre and move it down by `dy`. */
+function place(v: Vertex[], angle: number, dy: number): Vertex[] {
+  const c = Math.cos(angle);
+  const s = Math.sin(angle);
+  return v.map(([x, y, r]) => {
+    const px = x - CX;
+    const py = y - CY;
+    return [CX + px * c - py * s, CY + dy + px * s + py * c, r];
+  });
 }
 
 const K = 0.5523; // circular-arc cubic handle length
@@ -113,12 +207,12 @@ export interface LogoPaths {
   red: string;
 }
 
-/** Path data for the three stacked layers (red below amber below white). */
+/** Path data for the three stacked layers (red below amber below white) at morph progress t. */
 export function logoPaths(t: number): LogoPaths {
-  const base = vertices(t);
-  return {
-    white: roundedPath(base),
-    amber: roundedPath(dilate(base, AMBER, t)),
-    red: roundedPath(dilate(base, RED, t)),
-  };
+  const merge = smoother(t, MERGE.from, MERGE.to);
+  const angle = (Math.PI / 2) * t;
+  const dy = BAR.drop * t;
+  const { v, counter } = vertices(merge);
+  const layer = (fringe: Fringe) => roundedPath(place(dilate(v, fringe, merge, counter), angle, dy));
+  return { white: layer(WHITE), amber: layer(AMBER), red: layer(RED) };
 }
