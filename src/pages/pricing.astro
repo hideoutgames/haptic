@@ -12,7 +12,7 @@
  * is). No free trial. Enterprise is by arrangement, through the contact address.
  *
  * Buttons: the free plan goes to the download section on the home page, Haptic
- * Pro to the sign-up page, Enterprise to an email.
+ * Pro to the sign-up page, Enterprise to an email (CONTACT_EMAIL).
  *
  * Sizes are mockup pixels (calc(N * var(--u))) on desktop; ≤ 820px switches to
  * phone sizes.
@@ -20,7 +20,7 @@
 import Page from '../layouts/Page.astro';
 import Faq, { type FaqItem } from '../components/Faq.astro';
 import FringeButton from '../components/FringeButton.astro';
-import { SUPPORT_EMAIL } from '../data/site';
+import { CONTACT_EMAIL, SUPPORT_EMAIL } from '../data/site';
 import { withBase } from '../lib/paths';
 
 /** Haptic Pro's price as shown on its card, or null while it is not set. */
@@ -67,8 +67,8 @@ const PLANS: Plan[] = [
     name: 'Enterprise',
     price: { text: 'Let’s talk', muted: true },
     features: ['Everything in Haptic Pro', 'Seats for your whole team'],
-    cta: { label: 'Contact', href: `mailto:${SUPPORT_EMAIL}` },
-    note: SUPPORT_EMAIL,
+    cta: { label: 'Contact', href: `mailto:${CONTACT_EMAIL}` },
+    note: CONTACT_EMAIL,
   },
 ];
 
@@ -84,7 +84,7 @@ const FAQ: FaqItem[] = [
   },
   {
     q: `What if I or my company make more than ${PER_YEAR}?`,
-    a: `Then you need a Haptic Pro subscription, on desktop too. Teams need one subscription per seat: one for each person who uses Haptic. For a larger team, <a href="mailto:${SUPPORT_EMAIL}">contact us</a> about Enterprise.`,
+    a: `Then you need a Haptic Pro subscription, on desktop too. Teams need one subscription per seat: one for each person who uses Haptic. For a larger team, <a href="mailto:${CONTACT_EMAIL}">contact us</a> about Enterprise.`,
   },
 ];
 ---
