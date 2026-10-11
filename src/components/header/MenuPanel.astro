@@ -1,8 +1,9 @@
 ---
 /**
- * The popover under the logo: surface + notch (two siblings so each can carry
- * its own backdrop-filter) and the link content, two titled columns over a
- * footer row. Visibility is driven by the `data-open` attribute on the header,
+ * The popover under the logo: one pane of frosted glass (panel and notch in a
+ * single backdrop-filtered element, shaped by a mask, so the two blur as one),
+ * its drop shadow on a plain layer behind it, and the link content, two titled
+ * columns over a footer row. Visibility is driven by the `data-open` attribute on the header,
  * set by header.ts.
  */
 import { withBase } from '../../lib/paths';
@@ -32,23 +33,9 @@ const columns = [
 ];
 ---
 
-<svg class="defs" width="0" height="0" aria-hidden="true" focusable="false">
-  <!--
-    Notch outline taken from the designer's popover SVG, in bounding-box units
-    of an 85 × 18.24 px box: concave fillets into the panel's top edge, straight
-    flanks and a rounded tip rising 17.74px. The last 0.5px tucks under the
-    panel so the two translucent pieces never show a seam.
-  -->
-  <clipPath id="menu-notch" clipPathUnits="objectBoundingBox">
-    <path
-      d="M0 .9726C.0694 .9726 .1376 .8824 .1966 .7137C.258 .5396 .3387 .3083 .4017 .1289C.462 -.043 .538 -.043 .5983 .1289C.6613 .3083 .742 .5396 .8034 .7137C.8624 .8824 .9306 .9726 1 .9726V1H0Z"
-    ></path>
-  </clipPath>
-</svg>
-
 <div class="menu" id={id} role="group" aria-label="Site menu" tabindex="-1">
-  <div class="menu__notch" aria-hidden="true"></div>
   <div class="menu__surface" aria-hidden="true"></div>
+  <div class="menu__glass" aria-hidden="true"></div>
 
   {/* data-lenis-prevent: the panel scrolls on short screens; Lenis would otherwise turn the wheel into page scroll. */}
   <div class="menu__body" data-lenis-prevent>
@@ -85,11 +72,6 @@ const columns = [
 
 <style>
   /* Sizes are authored at the 1280px mockup and scale with --m (see SiteHeader). */
-  .defs {
-    position: absolute;
-    pointer-events: none;
-  }
-
   .menu {
     --w: calc(497.5 * var(--m));
     --pad-l: calc(23 * var(--m));
@@ -97,9 +79,12 @@ const columns = [
     --row: calc(33 * var(--m));
     /* Column titles and the country: the mockup's quiet grey. */
     --muted: rgb(138 138 139);
-    /* Nearly opaque: the hero's giant lettering must not read through the panel. */
-    --fill-a: 0.985;
-    --fill-top: 24 25 27;
+    /* Frosted glass: a dark tint over a heavy blur of whatever is behind (the
+       hero's glow, the giant lettering, the devices), so the page shows through
+       as soft colour while the links stay crisp and readable on it. */
+    --glass: rgb(20 20 22 / 0.58);
+    --glass-blur: blur(calc(64 * var(--m))) saturate(1.5);
+    --radius: calc(16 * var(--m));
     position: absolute;
     top: calc(var(--safe-top) + 77 * var(--m));
     left: 50%;
@@ -131,43 +116,46 @@ const columns = [
   }
 
   .menu__surface,
-  .menu__notch {
+  .menu__glass {
     position: absolute;
-    -webkit-backdrop-filter: blur(calc(40 * var(--m))) saturate(1.2);
-    backdrop-filter: blur(calc(40 * var(--m))) saturate(1.2);
     opacity: 0;
     transition: opacity 0.18s ease;
   }
 
+  /* The drop shadow only (outer shadows are drawn outside the box, so none of it
+     lies under the glass to be blurred into it). */
   .menu__surface {
     inset: 0;
-    border-radius: calc(16 * var(--m));
-    /* Dark at the top, warming toward the bottom like the mockup's glass over the
-       hero glow; baked in because so little of the backdrop shows through. Stops
-       are the mockup's tones less the ~2 levels the glow adds through the 1.5%
-       translucency. */
-    background: linear-gradient(
-      rgb(var(--fill-top) / var(--fill-a)),
-      rgb(36 35 31 / var(--fill-a)) 25%,
-      rgb(50 43 36 / var(--fill-a)) 46%,
-      rgb(52 48 44 / var(--fill-a)) 56%,
-      rgb(53 46 43 / var(--fill-a)) 66%,
-      rgb(50 41 37 / var(--fill-a)) 76%,
-      rgb(49 37 34 / var(--fill-a)) 84%,
-      rgb(47 35 34 / var(--fill-a)) 92%,
-      rgb(45 31 32 / var(--fill-a))
-    );
+    border-radius: var(--radius);
     box-shadow: 0 calc(14 * var(--m)) calc(40 * var(--m)) rgb(0 0 0 / 0.28);
   }
 
-  .menu__notch {
-    left: 50%;
-    width: calc(85 * var(--m));
-    margin-left: calc(-42.5 * var(--m));
-    height: calc(18.24 * var(--m));
-    bottom: calc(100% - 0.5 * var(--m));
-    background: rgb(var(--fill-top) / var(--fill-a));
-    clip-path: url(#menu-notch);
+  /*
+   * The glass: the panel and the notch above it as one element, so they blur
+   * the page as one pane (blurred separately, the notch only saw the dark sky
+   * above the panel and came out darker, with a seam). Its outline is a mask:
+   * the notch (the designer's popover outline, in an 85 × 18.24 box whose last
+   * 0.5px tucks into the panel), and the panel's rounded rectangle as two
+   * overlapping bars and four quarter-circle corners.
+   */
+  .menu__glass {
+    --notch-h: calc(17.74 * var(--m));
+    --notch-mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 1 1' preserveAspectRatio='none'%3E%3Cpath d='M0 .9726C.0694 .9726 .1376 .8824 .1966 .7137C.258 .5396 .3387 .3083 .4017 .1289C.462 -.043 .538 -.043 .5983 .1289C.6613 .3083 .742 .5396 .8034 .7137C.8624 .8824 .9306 .9726 1 .9726V1H0Z'/%3E%3C/svg%3E");
+    --corner: #000 calc(var(--radius) - 0.5px), #0000 calc(var(--radius) + 0.5px);
+    --shape:
+      var(--notch-mask) 50% 0 / calc(85 * var(--m)) calc(18.24 * var(--m)) no-repeat,
+      linear-gradient(#000 0 0) 0 calc(var(--notch-h) + var(--radius)) / 100% calc(100% - var(--notch-h) - 2 * var(--radius)) no-repeat,
+      linear-gradient(#000 0 0) var(--radius) var(--notch-h) / calc(100% - 2 * var(--radius)) calc(100% - var(--notch-h)) no-repeat,
+      radial-gradient(circle at 100% 100%, var(--corner)) 0 var(--notch-h) / var(--radius) var(--radius) no-repeat,
+      radial-gradient(circle at 0 100%, var(--corner)) 100% var(--notch-h) / var(--radius) var(--radius) no-repeat,
+      radial-gradient(circle at 100% 0, var(--corner)) 0 100% / var(--radius) var(--radius) no-repeat,
+      radial-gradient(circle at 0 0, var(--corner)) 100% 100% / var(--radius) var(--radius) no-repeat;
+    inset: calc(-1 * var(--notch-h)) 0 0;
+    background: var(--glass);
+    -webkit-backdrop-filter: var(--glass-blur);
+    backdrop-filter: var(--glass-blur);
+    -webkit-mask: var(--shape);
+    mask: var(--shape);
   }
 
   .menu__body {
@@ -186,7 +174,7 @@ const columns = [
   }
 
   :global([data-open]) .menu__surface,
-  :global([data-open]) .menu__notch,
+  :global([data-open]) .menu__glass,
   :global([data-open]) .menu__body {
     opacity: 1;
     transition: opacity 0.28s ease 0.05s;
@@ -239,6 +227,13 @@ const columns = [
     border-radius: 50%;
     background: var(--c-amber);
     translate: 0 -50%;
+  }
+
+  /* Without backdrop blur the tint alone would let the page read through: near-opaque instead. */
+  @supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
+    .menu {
+      --glass: rgb(26 26 28 / 0.96);
+    }
   }
 
   @media (forced-colors: active) {
@@ -336,14 +331,14 @@ const columns = [
 
     .menu,
     .menu__surface,
-    .menu__notch,
+    .menu__glass,
     .menu__body {
       transition-duration: 0.12s !important;
     }
 
     :global([data-open]) .menu,
     :global([data-open]) .menu__surface,
-    :global([data-open]) .menu__notch,
+    :global([data-open]) .menu__glass,
     :global([data-open]) .menu__body {
       transition-delay: 0s !important;
     }
