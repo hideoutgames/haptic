@@ -10,8 +10,9 @@
  *                  three-quarter view to face front (the turn ends at 0.20).
  *                  It is still rising when the pin stops the page, and
  *                  glides on to rest instead of stopping with it.
- *   -0.22 – 0.60   the lid lifts as the turn settles and opens in one even
- *                  swing; the display lights once it is past 70 degrees
+ *   -0.22 – 0.60   the lid lifts while the MacBook is still turning and
+ *                  opens in one even swing; the display lights once it is
+ *                  past 70 degrees
  *    0.60 – 0.70   hold: "Desktop"
  *    0.70 – 1.45   the iPad slides in on its stand from just outside the left
  *                  edge, turning to face the front as it goes ("Tablet" from

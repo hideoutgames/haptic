@@ -18,7 +18,7 @@ export interface SceneState {
   rise: number;
   /** MacBook turns from three-quarter view to face front as it rises. */
   turn: number;
-  /** Lid opens (it starts as the turn settles). */
+  /** Lid opens (it starts while the MacBook is still turning). */
   open: number;
   /** Display powers on. */
   screen: number;

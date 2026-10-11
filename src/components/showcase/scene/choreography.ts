@@ -9,7 +9,7 @@
  * the iPad turns to face the front while it slides in, the iPhone turns from
  * its back to its front while it rises (both follow a single state value, so
  * they cannot drift apart), and the MacBook turns while it rises, its lid
- * starting to open as the turn settles. The lean of the iPad and iPhone stays
+ * starting to open while it is still turning. The lean of the iPad and iPhone stays
  * fixed while they yaw.
  *
  * Final poses come from the layout (side-by-side on desktop, stacked on
@@ -222,7 +222,7 @@ export function dollyFactor(s: SceneState): number {
 export function applyState(models: Models, s: SceneState, L: Layout, starts: Starts): Placement {
   const { mac, ipad, phone } = models;
 
-  // ---- MacBook: rises and turns to face front at once; the lid opens as the turn settles ----
+  // ---- MacBook: rises and turns to face front at once; the lid starts opening during the turn ----
   const rise = clamp01(s.rise);
   const turn = clamp01(s.turn);
   const macYaw = lerp(L.entrance.yaw, L.mac.yaw, turn);
