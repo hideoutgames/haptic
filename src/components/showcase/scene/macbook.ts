@@ -2,7 +2,8 @@
  * MacBook Pro 16" (Space Black), modelled to scale in millimetres.
  *
  *   footprint 355.7 × 248.1, closed height 16.8 (base 10.7 on 0.6 feet, lid 5.2)
- *   display 3456 × 2234 (16.2"), 345.6 × 223.4 mm, notch, square bottom corners
+ *   display 3456 × 2234 (16.2"), 345.6 × 223.4 mm, square bottom corners (no
+ *   notch: the screen shows the editor edge to edge)
  *
  * Frame: origin on the ground at the middle of the base; +X right, +Y up and
  * +Z towards the user. The lid is a group hinged at the back edge of the base:
@@ -13,7 +14,6 @@ import {
   Group,
   Mesh,
   MeshBasicMaterial,
-  CircleGeometry,
   Color,
   PlaneGeometry,
   type Texture,
@@ -30,7 +30,6 @@ export const MAC = {
   baseHeight: 10.7,
   lidThickness: 5.2,
   display: { w: 345.6, h: 223.4 },
-  notch: { w: 36.7, h: 6.4 },
   cornerRadius: 12,
 } as const;
 
@@ -202,16 +201,6 @@ export function createMacBook(m: Materials, screen: Texture, tabletSize: { w: nu
   );
   content.position.z = faceZ + 0.06;
   lid.add(content);
-
-  // The notch: a black tab hanging from the top edge, with the camera in it.
-  const { w: nW, h: nH } = MAC.notch;
-  const notchOutline = translateOutline(roundedRectOutline(nW, nH, [0, 0, 3.4, 3.4], 8), 0, displayTop - nH / 2);
-  const notch = new Mesh(flatShape({ outline: notchOutline, uv: () => [0, 0] }), m.unlit('#000000'));
-  notch.position.z = faceZ + 0.1;
-  lid.add(notch);
-  const cam = new Mesh(new CircleGeometry(1.15, 20), m.lens);
-  cam.position.set(0, displayTop - nH / 2 + 0.3, faceZ + 0.14);
-  lid.add(cam);
 
   // Reflection layer over the whole glass.
   const glare = new Mesh(
