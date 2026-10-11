@@ -152,7 +152,10 @@ const sizesFor = (stacked: string, side: string) => `${STACKED_QUERY} ${stacked}
     /* Room between the MacBook base and the bottom of the backdrop, which
        must end on the page colour (see bandStyle). */
     --tail: calc(100svh - var(--ay));
-    --text-left: max(var(--gutter), calc((100vw - 1600px) / 2 + var(--gutter)));
+    /* Wider than 1600px the composition stops growing (--u is capped) and
+       stays centred: the copy and the devices keep to the same frame. */
+    --frame-inset: max(0px, calc((100vw - 1600px) / 2));
+    --text-left: calc(var(--frame-inset) + var(--gutter));
 
     position: relative;
     color: var(--c-text);
@@ -309,7 +312,8 @@ const sizesFor = (stacked: string, side: string) => `${STACKED_QUERY} ${stacked}
     position: absolute;
     z-index: var(--z-media);
     top: calc(var(--ay) - 479 * var(--k));
-    right: calc(-134 * var(--k));
+    /* The MacBook runs off the right edge of the frame (of the screen, up to 1600px wide). */
+    right: calc(var(--frame-inset) - 134 * var(--k));
     width: calc(723 * var(--k));
     aspect-ratio: 4256 / 2834;
   }
@@ -384,7 +388,8 @@ const sizesFor = (stacked: string, side: string) => `${STACKED_QUERY} ${stacked}
   }
 
   /* ---- Tablet portrait and phones: copy on top, the devices stacked below ----
-     Same query as STACKED_QUERY (showcase/layout.ts). The stage becomes a
+     Same query as STACKED_QUERY (showcase/layout.ts), which SiteHeader.astro
+     repeats too (its fade ends at this heading). The stage becomes a
      column: the copy, then the rig, which takes the height that is left. The
      group of devices is sized to that space (container units), so the layout
      holds for any screen shape and any wrapping of the copy, and it is
@@ -411,6 +416,8 @@ const sizesFor = (stacked: string, side: string) => `${STACKED_QUERY} ${stacked}
       left: auto;
       flex: none;
       width: auto;
+      /* SiteHeader.astro's stacked --fade-y is sized from this offset (its
+         fade ends a few px past it, above the letters): change them together. */
       margin: calc(clamp(68px, 11svh, 92px) + env(safe-area-inset-top, 0px)) var(--gutter) 0;
     }
 

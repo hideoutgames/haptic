@@ -1,22 +1,47 @@
 /**
- * Scroll sequence for the device showcase: a slow, calm product film, one idea
- * per beat, each followed by a hold in which nothing moves while the copy is
- * read. In units of screen heights of scroll (the table under `T`):
+ * Scroll sequence for the device showcase: a short, continuous product film.
+ * Each device makes one eased gesture in which it travels and turns at the
+ * same time, and the next gesture starts as the last one settles, so the film
+ * flows instead of stopping and starting; it holds still only briefly, where
+ * a line of copy is read. In screens of scroll from the start of the pin
+ * (the table `T`; negative is before it, while the section scrolls in):
  *
- *   before the pin  the MacBook arrives with the scrolling page, shut, and
- *                    turns gently from three-quarter view to face front
- *   0.05 – 1.05      the lid opens; the display lights once it is past 70 degrees
- *   1.16 – 1.35      hold: "Desktop"
- *   1.35 – 2.25      the iPad slides in on its stand from just outside the left
- *                    edge, turning to face the front as it settles
- *   2.25 – 2.50      hold: "Tablet"
- *   2.50 – 3.00      the iPhone rises into place, back to the viewer
- *   2.85 – 3.95      it turns slowly to face front, showing Projects
- *   3.95 – 4.35      final hold, then the pin releases
+ *   -0.45 – 0.30   the MacBook comes up with the page, starting shut, turning
+ *                  from three-quarter view to face front (the turn ends at 0.20).
+ *                  It is still rising when the pin stops the page, and
+ *                  glides on to rest instead of stopping with it.
+ *   -0.22 – 0.60   the lid lifts while the MacBook is still turning and
+ *                  opens in one even swing; the display lights once it is
+ *                  past 70 degrees
+ *    0.60 – 0.70   hold: "Desktop"
+ *    0.70 – 1.45   the iPad slides in on its stand from just outside the left
+ *                  edge, turning to face the front as it goes ("Tablet" from
+ *                  0.96, once it is well in view)
+ *    1.45 – 1.50   hold: "Tablet" (the iPad's last stretch is a slow settle)
+ *    1.50 – 2.20   the iPhone rises into place from just below the frame,
+ *                  turning from its back to its front as it rises, showing
+ *                  Projects ("Phone" from 1.72)
+ *    2.20 – 2.50   final hold, then the pin releases
  *
- * Everything is eased with sine / power2 in-outs (no overshoot), scrubbed with
- * a long catch-up, and played in reverse when scrolling back. The camera
- * dollies in a few per cent over the whole pin.
+ * One timeline runs the whole film, from the moment the section scrolls in
+ * to the end of the pin, under one scrub (the pin is a ScrollTrigger of its
+ * own), so the MacBook's arrival flows into the lid opening with no seam
+ * where the pin starts. The eases are chosen per kind of move (`EASE`; no
+ * overshoot), the scrub's catch-up smooths the scroll steps, and everything
+ * plays in reverse when scrolling back. The camera dollies in a few per cent
+ * over the whole film. (The scene fits where the iPad and the iPhone start to
+ * each canvas, so each comes into view as its beat starts, whatever the
+ * screen's shape.)
+ *
+ * The scrub's catch-up (`SCRUB`: an expo ease restarted on every scroll
+ * update, in effect a lag of about 0.1 s on top of Lenis' own smoothing) turns
+ * the wheel's steps into a glide. It is kept short because the film runs that
+ * far behind the page: the page stops dead where the pin catches it, while the
+ * film is still behind. With a longer catch-up (1.3 s), a brisk scroll reached
+ * the pin before the MacBook's own move had got going, so the MacBook stopped
+ * with the page and then surged as the film caught up, and the pin let go
+ * before the iPhone had settled. The last move ends 0.3 screens before the pin
+ * releases, which covers the lag up to brisk scrolling (2.5 screens a second).
  *
  * Two renderers share one timeline. The default is the 2D rig of the page (the
  * device-frame pictures, moved with xPercent/yPercent so the same timeline
@@ -36,7 +61,8 @@
  *
  * Query flags for testing: `?no3d` keeps the 2D rig, `?force3d` never gives
  * up on the 3D scene (no safety net), `?quality=high|lite` forces a quality
- * tier, `?debug3d` exposes the scene as window.__haptic3d.
+ * tier, `?debug3d` exposes the scene, the state, the timeline (time 0 is
+ * `T.arrive`) and the pin as window.__haptic3d.
  */
 import { probeGPU } from '../components/showcase/gpu';
 import { STACKED_QUERY } from '../components/showcase/layout';
@@ -52,48 +78,109 @@ import { getLenis, gsap, initSmoothScroll, ScrollTrigger } from './motion';
 import { track } from './preload';
 
 /**
- * The pinned timeline, in units of the side layout's pin length divided by its
- * screen height (1 unit = one screen of scroll there; the stacked layout is
- * the same film, a little shorter). Labels double as the step thresholds.
+ * The film, in screens of scroll from the start of the pin (negative: before
+ * it). One unit is one screen of scroll beside the copy; the stacked layout
+ * plays the same film a little shorter (`STACKED_SCALE`). The pin lasts from
+ * 0 to `end`.
  */
 const T = {
-  /** The lid opens slowly, the display lights as it passes SCREEN_ON_ANGLE. */
-  open: 0.05,
-  openDur: 1.0,
-  screenDur: 0.5,
-  /** The iPad slides in from the left and settles on its stand. */
-  ipad: 1.35,
-  ipadDur: 0.9,
-  /** The iPhone rises, then turns from its back to its front. */
-  phone: 2.5,
-  phoneDur: 0.5,
-  flip: 2.85,
-  flipDur: 1.1,
-  /** End of the pin: everything is held from the last move to here. */
-  end: 4.35,
+  /**
+   * The MacBook starts to come up when the section is this far from the top
+   * of the screen. It rises and turns at once; the rise outlasts the turn and
+   * runs on past the start of the pin, so the MacBook, which has been moving
+   * up with the page, glides to rest instead of stopping dead with it.
+   */
+  arrive: -0.45,
+  riseDur: 0.75,
+  turnDur: 0.65,
+  /**
+   * The lid starts to lift while the MacBook is still turning, so arrival and
+   * opening flow into each other; the display lights as it passes SCREEN_ON_ANGLE.
+   */
+  open: -0.22,
+  openDur: 0.82,
+  screenDur: 0.3,
+  /** The iPad slides in from the left, turning to face the front as it goes. */
+  ipad: 0.7,
+  ipadDur: 0.75,
+  /** The iPhone rises into place, turning from its back to its front as it rises. */
+  phone: 1.5,
+  phoneDur: 0.7,
+  /** End of the pin: the finished composition is held from the last move to here. */
+  end: 2.5,
 };
 
-/**
- * Pin length as a multiple of the screen height: one screen per unit of `T`
- * beside the copy, a little less when stacked.
- */
-const PIN_SCREENS = { side: T.end, stacked: T.end * 0.875 };
-
-/** How long a line of copy takes to fade out (and, after it, in). */
-const COPY_FADE = 0.4;
+/** The stacked layout's film runs at this many screens per unit of `T`. */
+const STACKED_SCALE = 0.9;
 
 /**
- * The copy and the indicator change when the next device is well on its way,
- * not before: the old line is gone by the time `copySwap` says (the device is
- * about 60 per cent in place, and on screen), then the new line fades in.
+ * The curves, by kind of move. The scene maps its state linearly, so these
+ * are the curves the devices move with.
  */
+const EASE = {
+  /** The MacBook's rise and turn: gathers pace as it comes into view, settles gently. */
+  move: 'power2.inOut',
+  /**
+   * The lid: an even swing about the hinge. (On screen its top edge travels
+   * most while the lid is low and little once it is upright, so a steeper
+   * curve would look abrupt at the start and idle at the end.)
+   */
+  lid: 'sine.inOut',
+  /**
+   * Entrances from outside the frame (the iPad, the iPhone, and the stacked
+   * 2D group as it follows them): already moving as they come into view, then
+   * slowing evenly to rest, like something sliding to a stop. (A steeper
+   * ease-out would whip them in from the edge.)
+   */
+  enter: 'power1.out',
+  /** Fades, the copy and the camera. */
+  soft: 'sine.inOut',
+};
+
+/** The film's catch-up after the scroll (seconds): see the file header. */
+const SCRUB = 0.8;
+
+/**
+ * Copy: the old line fades out over `out`, then the new one fades in over
+ * `in`. The line changes as its device becomes the focus: once the device is
+ * well into view (`copySwap`, the moment the new line starts to fade in).
+ */
+const COPY_FADE = { out: 0.16, in: 0.22 };
 const copySwap = {
-  ipad: T.ipad + T.ipadDur * 0.57,
-  phone: T.phone + T.phoneDur * 0.8,
+  ipad: T.ipad + T.ipadDur * 0.35,
+  phone: T.phone + T.phoneDur * 0.32,
 };
 
-/** Where the lid is at SCREEN_ON_ANGLE on a sine.inOut ease: the display lights up from here. */
-const lidAtScreenOn = Math.acos(1 - (2 * SCREEN_ON_ANGLE) / LID_OPEN_ANGLE) / Math.PI;
+/** Where in its tween an eased value first reaches `share` (0–1), by bisection. */
+const whenEased = (ease: string, share: number) => {
+  const curve = gsap.parseEase(ease);
+  let lo = 0;
+  let hi = 1;
+  for (let i = 0; i < 24; i++) {
+    const mid = (lo + hi) / 2;
+    if (curve(mid) < share) lo = mid;
+    else hi = mid;
+  }
+  return hi;
+};
+
+/** Where in the lid's tween it passes SCREEN_ON_ANGLE: the display lights up from here. */
+const lidAtScreenOn = whenEased(EASE.lid, SCREEN_ON_ANGLE / LID_OPEN_ANGLE);
+
+/** Timeline position of a time in `T` (the timeline starts at `T.arrive`). */
+const at = (t: number) => t - T.arrive;
+
+/**
+ * The 2D rig (when there is no 3D scene) echoes the 3D moves with CSS
+ * transforms: each picture turns about its vertical centre line, seen in this
+ * perspective (px), from these angles (degrees; a flat picture turned much
+ * further would show its edge, then its mirror image). Positive turns its
+ * face to the right, as in the scene.
+ */
+const PERSPECTIVE = 1800;
+const TURN_2D = { mac: -24, ipad: 62, iphone: 70 };
+/** The 2D iPad starts a little larger (nearer the viewer) than at rest. */
+const START_SCALE_2D = { ipad: 1.04 };
 
 /** The scene's drawing buffer may be asked about only in these query forms. */
 const query = new URLSearchParams(location.search);
@@ -118,17 +205,26 @@ export function initShowcase(root: HTMLElement): void {
   if (!stage || !group || !mac || !ipad || !iphone || !fill || copy.length < 3) return;
 
   /**
-   * The xPercent that moves a device of the 2D rig just past the left edge of
-   * the stage (with a little to spare for the scale and turn it starts with),
-   * measured without its transforms, which offsets ignore, so a tween can
+   * The xPercent that puts a device of the 2D rig just past the left edge of
+   * the stage (by 2% of its width) as it starts: turned `turn` degrees about
+   * its vertical centre line and scaled `scale`, seen in PERSPECTIVE.
+   * Measured without its transforms (which offsets ignore), so a tween can
    * start from it again on every refresh.
    */
-  const offStageLeft = (el: HTMLElement) => {
+  const offStageLeft = (el: HTMLElement, turn: number, scale: number) => {
     let left = 0;
     for (let e: HTMLElement | null = el; e && e !== stage; e = e.offsetParent as HTMLElement | null) left += e.offsetLeft;
-    // The spare grows with the distance: the perspective pulls the turned
-    // element's far edge back towards the middle by a few per cent of it.
-    return -((left + el.offsetWidth) / el.offsetWidth) * 106 - 6;
+    const width = el.offsetWidth;
+    // GSAP writes the perspective first, so it applies after the translation,
+    // about the element's centre: a point x from the centre and z towards the
+    // viewer is drawn at x·P/(P − z). The turned right edge sits half·cos(a)
+    // right of the centre and half·sin(a) away from the viewer; solve for the
+    // translation that draws it at the stage's left edge.
+    const half = (width / 2) * scale;
+    const a = (turn * Math.PI) / 180;
+    const depthScale = PERSPECTIVE / (PERSPECTIVE + half * Math.sin(a));
+    const translate = -(left + width / 2 + width * 0.02) / depthScale - half * Math.cos(a);
+    return (translate / width) * 100;
   };
 
   const mm = gsap.matchMedia();
@@ -153,22 +249,30 @@ export function initShowcase(root: HTMLElement): void {
     // Copy that is not the current step waits below its slot.
     gsap.set(copy.slice(1), { opacity: 0, yPercent: 20 });
 
-    // 1. Before the pin, as the section scrolls into view: the MacBook rises
-    // (shut, three-quarter view) and turns to face front. Ends as the pin starts.
-    const enter = gsap.timeline({
-      defaults: { ease: 'sine.inOut' },
-      scrollTrigger: { trigger: root, start: 'top 45%', end: 'top top', scrub: 1.3 },
-    });
-    enter.fromTo(
-      mac,
-      { opacity: 0, yPercent: 16, scale: 0.92, rotationX: 14, transformPerspective: 1800, transformOrigin: '50% 100%' },
-      { opacity: 1, yPercent: 0, scale: 1, rotationX: 0, duration: 1 },
-      0,
-    );
-    enter.fromTo(S, { rise: 0 }, { rise: 1, duration: 1 }, 0);
-    enter.fromTo(S, { turn: 0 }, { turn: 1, duration: 1 }, 0);
+    /** Pixels of scroll per unit of `T` (one screen, a little less when stacked). */
+    const unit = () => stage.offsetHeight * (matchMedia(STACKED_QUERY).matches ? STACKED_SCALE : 1);
 
-    // 2. Pinned: the lid opens, the iPad slides in, the iPhone rises and turns.
+    // The film: one timeline from the moment the section is `-T.arrive` units
+    // from the top of the screen to the end of the pin, scrubbed by the scroll.
+    const tl = gsap.timeline({
+      defaults: { ease: EASE.move },
+      scrollTrigger: {
+        trigger: root,
+        start: () => `top ${-T.arrive * unit()}px`,
+        end: () => `+=${(T.end - T.arrive) * unit()}`,
+        scrub: SCRUB,
+        invalidateOnRefresh: true,
+      },
+      // The step follows the scrubbed timeline (not the raw scroll position), so
+      // the indicator changes with the copy.
+      onUpdate: () => {
+        const t = tl.time() + T.arrive;
+        const step = t >= copySwap.phone ? '3' : t >= copySwap.ipad ? '2' : '1';
+        if (root.dataset.step !== step) root.dataset.step = step;
+      },
+    });
+
+    // The pin: the stage holds still from the top of the section for `T.end` units.
     //
     // The default pin switches the stage to position: fixed, which Chromium
     // reports as a layout shift of about 1 each time the pin starts and ends
@@ -179,86 +283,99 @@ export function initShowcase(root: HTMLElement): void {
     // This script runs before the layout's own, so Lenis may not exist yet:
     // initSmoothScroll is idempotent, and asking for it here settles the question.
     const smoothScrolled = !!(getLenis() ?? initSmoothScroll()) && !matchMedia('(any-pointer: coarse)').matches;
-    const tl = gsap.timeline({
-      defaults: { ease: 'sine.inOut' },
-      scrollTrigger: {
-        trigger: root,
-        start: 'top top',
-        end: () => {
-          const screens = matchMedia(STACKED_QUERY).matches ? PIN_SCREENS.stacked : PIN_SCREENS.side;
-          return `+=${stage.offsetHeight * screens}`;
-        },
-        pin: stage,
-        pinType: smoothScrolled ? 'transform' : 'fixed',
-        // A long catch-up: the film glides after the scroll instead of following it.
-        scrub: 1.3,
-        invalidateOnRefresh: true,
-      },
-      // The step follows the scrubbed timeline (not the raw scroll position), so
-      // the indicator changes with the copy.
-      onUpdate: () => {
-        const t = tl.time();
-        const step = t >= copySwap.phone ? '3' : t >= copySwap.ipad ? '2' : '1';
-        if (root.dataset.step !== step) root.dataset.step = step;
-      },
+    const pin = ScrollTrigger.create({
+      trigger: root,
+      start: 'top top',
+      end: () => `+=${T.end * unit()}`,
+      pin: stage,
+      pinType: smoothScrolled ? 'transform' : 'fixed',
     });
 
     // Progress: a third of the bar per step, switching with the copy.
-    tl.fromTo(fill, { scaleX: 0 }, { scaleX: 1 / 3, ease: 'none', duration: copySwap.ipad }, 0);
-    tl.to(fill, { scaleX: 2 / 3, ease: 'none', duration: copySwap.phone - copySwap.ipad }, copySwap.ipad);
-    tl.to(fill, { scaleX: 1, ease: 'none', duration: T.end - copySwap.phone }, copySwap.phone);
+    tl.fromTo(fill, { scaleX: 0 }, { scaleX: 1 / 3, ease: 'none', duration: copySwap.ipad }, at(0));
+    tl.to(fill, { scaleX: 2 / 3, ease: 'none', duration: copySwap.phone - copySwap.ipad }, at(copySwap.ipad));
+    tl.to(fill, { scaleX: 1, ease: 'none', duration: T.end - copySwap.phone }, at(copySwap.phone));
 
-    // Camera: a very slow dolly-in over the whole pin, for depth.
-    tl.fromTo(S, { dolly: 0 }, { dolly: 1, ease: 'sine.inOut', duration: T.end }, 0);
+    // Camera: a very slow dolly-in over the whole film, for depth.
+    tl.fromTo(S, { dolly: 0 }, { dolly: 1, ease: EASE.soft, duration: T.end - T.arrive }, 0);
 
-    // The lid opens slowly; the display fades on once it is past SCREEN_ON_ANGLE.
-    tl.fromTo(S, { open: 0 }, { open: 1, duration: T.openDur }, T.open);
-    tl.fromTo(S, { screen: 0 }, { screen: 1, duration: T.screenDur }, T.open + T.openDur * lidAtScreenOn);
+    // 1. The MacBook comes up with the page, starting shut, and turns from
+    // three-quarter view to face front (the 2D picture rises and turns a
+    // little). The rise runs on past the start of the pin: as the page stops,
+    // the MacBook keeps gliding up for a moment and settles. The lid starts to
+    // open while the MacBook is still turning, so arrival and opening read as
+    // one gesture; the display fades on once the lid is past SCREEN_ON_ANGLE.
+    tl.fromTo(
+      mac,
+      { yPercent: 16, scale: 0.92, rotationX: 14, rotationY: TURN_2D.mac, transformPerspective: PERSPECTIVE, transformOrigin: '50% 100%' },
+      { yPercent: 0, scale: 1, rotationX: 0, rotationY: 0, duration: T.riseDur },
+      at(T.arrive),
+    );
+    tl.fromTo(mac, { opacity: 0 }, { opacity: 1, ease: EASE.soft, duration: T.riseDur * 0.5 }, at(T.arrive));
+    tl.fromTo(S, { rise: 0 }, { rise: 1, duration: T.riseDur }, at(T.arrive));
+    tl.fromTo(S, { turn: 0 }, { turn: 1, duration: T.turnDur }, at(T.arrive));
+    tl.fromTo(S, { open: 0 }, { open: 1, ease: EASE.lid, duration: T.openDur }, at(T.open));
+    tl.fromTo(S, { screen: 0 }, { screen: 1, ease: EASE.soft, duration: T.screenDur }, at(T.open + T.openDur * lidAtScreenOn));
 
-    // The iPad slides in from just outside the left edge of the stage, a little
-    // nearer the viewer and turned towards the way it is going, and settles,
-    // turning to face the front (the 3D scene does the same with the state
-    // below). It starts out of sight, so it is shown at once.
+    // Stacked layout: the 3D group, brought nearer while the MacBook is alone,
+    // settles back to make room in one slow drift, from the lid opening to the
+    // iPad's arrival. (The 2D group keeps itself centred as the devices join:
+    // `settle` below.)
+    tl.fromTo(S, { settle: 0 }, { settle: 1, ease: EASE.soft, duration: T.ipad + T.ipadDur * 0.8 - T.open }, at(T.open));
+
+    // 2. The iPad slides in from just outside the left edge of the stage, a
+    // little nearer the viewer, its screen turned towards the way it is going,
+    // and turns to face the front as it slides into place: one move. It starts
+    // out of sight, so it is shown at once.
     tl.fromTo(
       ipad,
-      { xPercent: () => offStageLeft(ipad), yPercent: 6, scale: 1.04, rotationY: 17, transformPerspective: 1800 },
-      { xPercent: 0, yPercent: 0, scale: 1, rotationY: 0, duration: T.ipadDur },
-      T.ipad,
+      {
+        xPercent: () => offStageLeft(ipad, TURN_2D.ipad, START_SCALE_2D.ipad),
+        yPercent: 6,
+        scale: START_SCALE_2D.ipad,
+        rotationY: TURN_2D.ipad,
+        transformPerspective: PERSPECTIVE,
+      },
+      { xPercent: 0, yPercent: 0, scale: 1, rotationY: 0, ease: EASE.enter, duration: T.ipadDur },
+      at(T.ipad),
     );
-    tl.fromTo(ipad, { opacity: 0 }, { opacity: 1, duration: T.ipadDur * 0.05 }, T.ipad);
-    tl.fromTo(S, { ipad: 0 }, { ipad: 1, duration: T.ipadDur }, T.ipad);
+    tl.fromTo(ipad, { opacity: 0 }, { opacity: 1, ease: EASE.soft, duration: T.ipadDur * 0.05 }, at(T.ipad));
+    tl.fromTo(S, { ipad: 0 }, { ipad: 1, ease: EASE.enter, duration: T.ipadDur }, at(T.ipad));
     // Stacked layout: the group of devices (centred under the copy) follows
-    // as they join. The CSS holds the offsets; on desktop they are 0.
+    // as they join, on the same curve as the device that is joining, so the
+    // composition stays centred all the way. The CSS holds the offsets; on
+    // desktop they are 0.
     const settle = (name: string) => parseFloat(getComputedStyle(group).getPropertyValue(name)) || 0;
     tl.fromTo(
       group,
       { yPercent: () => settle('--settle-mac') },
-      { yPercent: () => settle('--settle-ipad'), duration: T.ipadDur },
-      T.ipad,
+      { yPercent: () => settle('--settle-ipad'), ease: EASE.enter, duration: T.ipadDur },
+      at(T.ipad),
     );
 
-    // The iPhone rises into place (3D: back to the viewer), then turns to its front.
+    // 3. The iPhone rises into place from just below the frame, turning as it
+    // rises (3D: from its back to its front; 2D: from turned to the right,
+    // fading in as it rises).
     tl.fromTo(
       iphone,
-      { xPercent: -6, yPercent: 16, scale: 0.7 },
-      { xPercent: 0, yPercent: 0, scale: 1, duration: T.phoneDur },
-      T.phone,
+      { xPercent: -6, yPercent: 16, scale: 0.7, rotationY: TURN_2D.iphone, transformPerspective: PERSPECTIVE },
+      { xPercent: 0, yPercent: 0, scale: 1, rotationY: 0, ease: EASE.enter, duration: T.phoneDur },
+      at(T.phone),
     );
-    tl.fromTo(iphone, { opacity: 0 }, { opacity: 1, duration: T.phoneDur * 0.45 }, T.phone);
-    tl.fromTo(S, { phone: 0 }, { phone: 1, duration: T.phoneDur }, T.phone);
-    tl.fromTo(S, { flip: 0 }, { flip: 1, duration: T.flipDur }, T.flip);
-    tl.to(group, { yPercent: 0, duration: T.phoneDur }, T.phone);
+    tl.fromTo(iphone, { opacity: 0 }, { opacity: 1, ease: EASE.soft, duration: T.phoneDur * 0.3 }, at(T.phone));
+    tl.fromTo(S, { phone: 0 }, { phone: 1, ease: EASE.enter, duration: T.phoneDur }, at(T.phone));
+    tl.to(group, { yPercent: 0, ease: EASE.enter, duration: T.phoneDur }, at(T.phone));
 
     // Copy: the old line is gone completely before the next one fades in.
-    const swap = (from: HTMLElement, to: HTMLElement, at: number) => {
-      tl.to(from, { opacity: 0, yPercent: -20, duration: COPY_FADE }, at - COPY_FADE);
-      tl.to(to, { opacity: 1, yPercent: 0, duration: COPY_FADE }, at);
+    const swap = (from: HTMLElement, to: HTMLElement, t: number) => {
+      tl.to(from, { opacity: 0, yPercent: -20, ease: EASE.soft, duration: COPY_FADE.out }, at(t - COPY_FADE.out));
+      tl.to(to, { opacity: 1, yPercent: 0, ease: EASE.soft, duration: COPY_FADE.in }, at(t));
     };
     swap(copy[0], copy[1], copySwap.ipad);
     swap(copy[1], copy[2], copySwap.phone);
 
     // Hold the finished composition for the last stretch of the pin.
-    tl.set({}, {}, T.end);
+    tl.set({}, {}, at(T.end));
 
     // Switching reduced motion off mid-page rebuilds the pin, which would
     // otherwise leave the page scrolled to the top.
@@ -267,8 +384,8 @@ export function initShowcase(root: HTMLElement): void {
       window.scrollTo(0, scrollY);
     }
 
-    // `?debug3d`: the state, the timelines and (once it exists) the scene, for tests.
-    const debug = query.has('debug3d') ? { scene: null as ShowcaseScene | null, state: S, timeline: tl, enter, gsap } : null;
+    // `?debug3d`: the state, the timeline, the pin and (once it exists) the scene, for tests.
+    const debug = query.has('debug3d') ? { scene: null as ShowcaseScene | null, state: S, timeline: tl, pin, gsap } : null;
     if (debug) (window as unknown as { __haptic3d?: unknown }).__haptic3d = debug;
 
     // ---- 3D scene ----
@@ -308,10 +425,12 @@ export function initShowcase(root: HTMLElement): void {
             height,
             stacked,
             // The MacBook (not the whole group) fills this: its left edge clears
-            // the heading, and its right side bleeds off the screen, as in the mockup.
+            // the heading, and its right side bleeds off the frame (the screen, up
+            // to 1600px wide), as in the mockup.
             area: {
               left: r.left - s.left + 5 * k,
-              right: width + 130 * k,
+              // Just inside the rig's right edge, which bleeds off the frame (see the CSS).
+              right: r.right - s.left - 4 * k,
               top: Math.max(76, ay - 455 * k),
               bottom: Math.min(height - 20, ay + 260 * k),
               alignX: 'right' as const,

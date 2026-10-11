@@ -1,0 +1,98 @@
+---
+/**
+ * The HAPTIC title's lens-style chromatic aberration, shared by the hero and
+ * the 404 page: white ink over two copies of the word in the fringe colours,
+ * each widened horizontally about the word's centre (amber 1.04, red 1.075
+ * behind it) and softened with a slight blur. The copies are decorative
+ * (aria-hidden); the ink carries the text.
+ *
+ * Sizing: set `--t` on the element, one mockup pixel at the title's scale. The
+ * type is 172.5 t (the hero's title at the 1280px mockup, where t = --u) and the
+ * blur radii are written in t, so the fringes keep their look at any size.
+ * The parent positions the element and must make it a containing block
+ * (position: relative or absolute): the copies are laid exactly over the ink.
+ *
+ * Load-in: the copies converge from wider and the ink fades in; the end state
+ * is the natural state, so reduced motion simply shows the title. While the
+ * home page's preloader is up it holds the hero's copy in its final state
+ * (global rules in Preloader.astro, which match these class names). The
+ * preloader's own wordmark draws the same recipe with per-letter markup for
+ * its intro, so it keeps its own copy of these rules.
+ */
+import type { HTMLAttributes } from 'astro/types';
+
+type Props = HTMLAttributes<'h1'> & {
+  text: string;
+  /** Element to render (the hero's title is the page's h1). */
+  as?: 'h1' | 'p' | 'div' | 'span';
+};
+
+// The rest includes the caller's scope attribute, so its scoped styles reach this element.
+const { text, as: Tag = 'span', class: className, ...attrs } = Astro.props;
+---
+
+<Tag class:list={['chroma-title', className]} {...attrs}>
+  <span class="title__ca title__ca--red" aria-hidden="true">{text}</span>
+  <span class="title__ca title__ca--amber" aria-hidden="true">{text}</span>
+  <span class="title__ink">{text}</span>
+</Tag>
+
+<style>
+  .chroma-title {
+    font-family: var(--font-display);
+    font-weight: 400;
+    font-size: calc(172.5 * var(--t));
+    line-height: 1;
+    letter-spacing: 0;
+    white-space: nowrap;
+  }
+
+  .title__ink {
+    position: relative;
+    display: block;
+    color: #fff;
+    filter: blur(calc(0.5 * var(--t)));
+    animation: title-ink-in 0.7s ease-out 0.25s both;
+  }
+
+  /* Colour copies scale about the word centre: fringes grow toward the ends. */
+  .title__ca {
+    position: absolute;
+    inset: 0;
+    filter: blur(calc(1.2 * var(--t)));
+    transform: scaleX(var(--ca));
+    animation: title-converge 1.5s var(--ease-out) 0.2s both;
+  }
+
+  .title__ca--amber {
+    --ca: 1.04;
+    --ca-from: 1.2;
+    color: var(--c-amber);
+  }
+
+  .title__ca--red {
+    --ca: 1.075;
+    --ca-from: 1.34;
+    color: var(--c-red);
+  }
+
+  @keyframes title-ink-in {
+    from {
+      opacity: 0;
+    }
+  }
+
+  @keyframes title-converge {
+    from {
+      opacity: 0;
+      transform: scaleX(var(--ca-from));
+    }
+  }
+
+  /* High-contrast modes: drop the decorative colour copies, keep the white text. */
+  @media (forced-colors: active) {
+    .title__ca {
+      display: none;
+    }
+  }
+</style>

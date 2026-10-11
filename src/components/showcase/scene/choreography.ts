@@ -5,9 +5,12 @@
  *
  * The timeline owns the easing, so everything here is linear in the state
  * (a second ease on top would make each move start and stop twice as hard).
- * One idea per beat, and a device never turns about two axes at once: the lean
- * of the iPad and iPhone stays fixed while they yaw, and the MacBook turns
- * while it is shut and opens while it faces front.
+ * Each device makes one gesture in which travel and turn happen together:
+ * the iPad turns to face the front while it slides in, the iPhone turns from
+ * its back to its front while it rises (both follow a single state value, so
+ * they cannot drift apart), and the MacBook turns while it rises, its lid
+ * starting to open while it is still turning. The lean of the iPad and iPhone stays
+ * fixed while they yaw.
  *
  * Final poses come from the layout (side-by-side on desktop, stacked on
  * phones). World units are millimetres; +X right, +Y up, +Z towards the camera.
@@ -49,22 +52,28 @@ export interface Layout {
   mac: { x: number; z: number; yaw: number; open: number };
   ipad: Pose;
   phone: Pose;
-  /** While the MacBook is shut and turned: how far left it sits (mm), its start yaw and size. */
+  /**
+   * Where the MacBook starts its arrival (shut, turned three-quarter): how far
+   * left it sits (mm), its start yaw and size; all three ease to rest with `turn`.
+   */
   entrance: { shiftX: number; yaw: number; scale: number };
   /**
    * How the iPad arrives: it slides in on its stand along the ground, from the
-   * left of the picture (so it never crosses the MacBook), and settles. How far
-   * left of its resting place it starts depends on the screen: the scene fits
-   * the distance that starts it just outside the canvas (`fitArrival` in
-   * index.ts), and `dx` (mm) is only where that search starts. It starts `dz`
-   * (mm) nearer the viewer, so it is pushed back into place, and turned `yaw`
-   * (rad) further towards the way it is going than at rest, so it turns to
-   * face the front as it settles.
+   * left of the picture (so it never crosses the MacBook), and turns to face
+   * the front as it goes, travel and turn as one move. It starts turned `yaw`
+   * (rad) further than at rest, its screen towards the way it is going, so it
+   * comes into view side-on, its screen seen at a glancing angle, and opens up
+   * towards the viewer as it slides into place. How far left of its resting
+   * place it starts depends on the screen: the scene fits the distance that
+   * starts it just outside the canvas (`Starts`), and `dx` (mm) is only where
+   * that search starts. It starts `dz` (mm) nearer the viewer, so it is
+   * pushed back into place.
    */
   arrival: { dx: number; dz: number; yaw: number };
   /**
    * Stacked only: the whole group sits this far towards the camera (mm) while
-   * the MacBook is alone, so it is centred; it settles back as the others join.
+   * the MacBook is alone, so it is centred; it settles back as the others
+   * join (`worldShift`).
    */
   settleZ: number;
 }
@@ -94,7 +103,7 @@ export const LAYOUTS: Record<Layout['id'], Layout> = {
     ipad: { x: -328, z: 238, yaw: deg(5), pitch: deg(54) },
     phone: { x: -124, z: 340, yaw: deg(4), pitch: deg(6) },
     entrance: { shiftX: 85, yaw: deg(-38), scale: 1 },
-    arrival: { dx: 420, dz: 60, yaw: deg(17) },
+    arrival: { dx: 300, dz: 60, yaw: deg(105) },
     settleZ: 0,
   },
   stacked: {
@@ -108,7 +117,7 @@ export const LAYOUTS: Record<Layout['id'], Layout> = {
     ipad: { x: -62, z: 310, yaw: deg(4), pitch: deg(46) },
     phone: { x: 112, z: 360, yaw: deg(-7), pitch: deg(12) },
     entrance: { shiftX: 0, yaw: deg(-27), scale: 0.84 },
-    arrival: { dx: 340, dz: 40, yaw: deg(17) },
+    arrival: { dx: 260, dz: 40, yaw: deg(105) },
     settleZ: 150,
   },
 };
@@ -137,13 +146,35 @@ export interface Placement {
 }
 
 /**
- * How far below the floor (mm) the MacBook and the iPhone start. The MacBook
- * mostly arrives with the page scrolling in, so it only lifts a little; the
- * iPhone starts just below the bottom edge of the frame (more would be time
- * spent out of sight).
+ * Where the iPad and the iPhone start their entrances (mm). Each starts just
+ * out of sight, so that it comes into view at the very start of its beat,
+ * neither popping in partly on screen (too short a way in) nor spending the
+ * first part of its beat out of sight (too long a one). Where that is depends
+ * on the shape of the screen, so the scene fits both to the canvas
+ * (`fitStarts` in index.ts); the layout's `arrival.dx` (iPad) and `PHONE_DROP`
+ * (iPhone) give only where those searches start.
+ */
+export interface Starts {
+  /** How far left of its resting place the iPad starts its slide. */
+  ipadDx: number;
+  /** How far below the ground the iPhone starts its rise. */
+  phoneDrop: number;
+}
+
+/**
+ * How far below the floor (mm) the MacBook starts. It mostly arrives with the
+ * page scrolling in, so it only lifts a little (the last of it after the pin
+ * has stopped the page, so it glides to rest).
  */
 const MAC_RISE = 60;
-const PHONE_RISE = 200;
+/** Where the search for the iPhone's start (`Starts.phoneDrop`) begins (mm below the ground). */
+export const PHONE_DROP = 200;
+/**
+ * The iPhone's contact shadow fades in over the last this many mm of its rise,
+ * or over all of it if it starts nearer: the shadow lies in view, where the
+ * iPhone comes to rest, while the iPhone itself is still out of sight.
+ */
+const PHONE_SHADOW_IN = 200;
 /**
  * The iPad's shadows fade in over this first part of its slide: their soft
  * edges reach a little past it, and would otherwise show at the edge of the
@@ -177,12 +208,13 @@ function placeStanding(g: Group, x: number, y: number, z: number, yaw: number, p
 }
 
 /**
- * Offset of the whole group along Z for the current state (stacked layout):
- * a quarter of the way back as the lid opens, the rest as the iPad joins, so
- * the settle never starts or stops abruptly.
+ * Offset of the whole group along Z for the current state (stacked layout).
+ * It has a state value of its own, so the timeline can ease it as one slow
+ * drift from the lid opening to the iPad's arrival (tied to the iPad's own
+ * value, the MacBook would set off with the iPad's entrance speed).
  */
 export function worldShift(s: SceneState, L: Layout): number {
-  return L.settleZ * (1 - (s.open * 0.25 + s.ipad * 0.75));
+  return L.settleZ * (1 - clamp01(s.settle));
 }
 
 /** Camera distance relative to the framed one: DOLLY farther at the start, 1 at the end. */
@@ -190,20 +222,17 @@ export function dollyFactor(s: SceneState): number {
   return 1 + DOLLY * (1 - clamp01(s.dolly));
 }
 
-/**
- * `arrivalDx` is how far left of its resting place the iPad starts (mm): the
- * scene passes the distance that starts it just outside the canvas.
- */
-export function applyState(models: Models, s: SceneState, L: Layout, arrivalDx: number): Placement {
+/** `starts`: where the iPad and the iPhone start on this canvas (the scene fits them). */
+export function applyState(models: Models, s: SceneState, L: Layout, starts: Starts): Placement {
   const { mac, ipad, phone } = models;
 
-  // ---- MacBook: rises shut and turned, turns to face front, then opens ----
+  // ---- MacBook: rises and turns to face front at once; the lid starts opening during the turn ----
   const rise = clamp01(s.rise);
   const turn = clamp01(s.turn);
   const macYaw = lerp(L.entrance.yaw, L.mac.yaw, turn);
   const macY = -(1 - rise) * MAC_RISE;
   mac.group.visible = rise > 0.001;
-  // While the lid is shut and the MacBook is turned, it sits a little to the left, so it stays in frame.
+  // While it is turned, it sits a little to the left, so it stays in frame.
   const macX = L.mac.x - (1 - turn) * L.entrance.shiftX;
   mac.group.position.set(macX, macY, L.mac.z);
   mac.group.rotation.set(0, macYaw, 0);
@@ -213,28 +242,25 @@ export function applyState(models: Models, s: SceneState, L: Layout, arrivalDx: 
   // The display lights up once the lid is past SCREEN_ON_ANGLE, as the timeline reaches it.
   mac.setScreen(clamp01(s.screen) * clamp01((lid - SCREEN_ON_ANGLE * 0.92) / (SCREEN_ON_ANGLE * 0.08)));
 
-  // ---- iPad: slides in on its stand along the ground from the left, turning to face the front ----
+  // ---- iPad: slides in on its stand along the ground from the left, turning to face the front as it goes ----
   const e = clamp01(s.ipad);
   const away = 1 - e;
   ipad.group.visible = e > 0.001;
   ipad.setLean(L.ipad.pitch);
   placeStanding(
     ipad.group,
-    L.ipad.x - arrivalDx * away,
+    L.ipad.x - starts.ipadDx * away,
     ipad.restHeight,
     L.ipad.z + L.arrival.dz * away,
     L.ipad.yaw + L.arrival.yaw * away,
     L.ipad.pitch,
   );
 
-  // ---- iPhone: rises into place with its back to the viewer, then turns to face front ----
+  // ---- iPhone: rises into place from just below the frame, turning from its back to its front as it rises ----
   const q = clamp01(s.phone);
   phone.group.visible = q > 0.001;
-  {
-    const f = L.phone;
-    const y = -(1 - q) * PHONE_RISE;
-    place(phone.group, f.x, y, f.z, lerp(Math.PI, f.yaw, clamp01(s.flip)), f.pitch);
-  }
+  const phoneY = -(1 - q) * starts.phoneDrop;
+  place(phone.group, L.phone.x, phoneY, L.phone.z, lerp(Math.PI, L.phone.yaw, q), L.phone.pitch);
 
   const p = placement;
   p.mac.x = macX;
@@ -252,7 +278,7 @@ export function applyState(models: Models, s: SceneState, L: Layout, arrivalDx: 
   p.phone.x = L.phone.x;
   p.phone.z = L.phone.z;
   p.phone.yaw = phone.group.rotation.y;
-  p.phone.strength = phone.group.visible ? smooth(-200, -10, phone.group.position.y) : 0;
-  p.phone.lift = Math.max(0, phone.group.position.y);
+  p.phone.strength = phone.group.visible ? smooth(-Math.min(starts.phoneDrop, PHONE_SHADOW_IN), -10, phoneY) : 0;
+  p.phone.lift = Math.max(0, phoneY);
   return p;
 }

@@ -1,7 +1,9 @@
 ---
 /**
- * Download section: an OS-aware primary button, a Haptic Pro note, the
- * pricing line and a row of every other platform.
+ * Download section: an OS-aware primary button, one line of quiet fine print
+ * (the Haptic Pro note and the pricing link) and a row of every other platform.
+ * The button is the only focal point: everything else is deliberately small
+ * and muted, and the fine print carries no bold or coloured emphasis.
  *
  * Server-rendered default (also what no-JS visitors get): the three desktop
  * buttons, with the mobile stores in the "Other platforms" row. platform.ts
@@ -10,6 +12,15 @@
  *
  * Desktop measurements are mockup pixels: calc(N * var(--u)); the smallest
  * text and tap targets are floored at their phone sizes with max().
+ *
+ * Vertical rhythm: the page ends with this section and the footer on one
+ * screen, so everything from the heading down is set close enough to fit
+ * there whole, the heading clear of the H and the fade under it (SiteHeader).
+ * At a 16:10 desktop window (800u tall) the footer takes 260.5u and the stack
+ * below takes 424.5u: heading 75.6, lead 18 + 38.4, button 40 + 84, fine
+ * print 18 + 22.5, other platforms 40 + 48, padding 40. That puts the heading
+ * at 115u, clear of the fade (it ends at 106u). Above the heading the section
+ * keeps its generous top padding, for when it is scrolled into view.
  */
 import Grain from './Grain.astro';
 import DownloadButton from './download/DownloadButton.astro';
@@ -34,16 +45,15 @@ const LEAD = 'Build from anywhere, anytime.';
       {PLATFORMS.map((platform) => <DownloadButton platform={platform} hidden={platform.group === 'mobile'} />)}
     </div>
 
+    <!-- One paragraph per variant (platform.ts shows the one for the visitor's group); the hidden one is
+         visibility:hidden, so its link is neither focusable nor read out. -->
     <div class="meta" data-reveal>
-      <div class="notes">
-        <p class="note" data-note="desktop" data-active="true">
-          Desktop is free. iPhone, iPad and Android require <span class="pro">Haptic Pro</span>.
-        </p>
-        <p class="note" data-note="mobile" data-active="false">
-          iPhone, iPad and Android require <span class="pro">Haptic Pro</span>. Desktop is free.
-        </p>
-      </div>
-      <p class="pricing">View <a href={withBase(PRICING_HREF)}>Pricing</a> for more details.</p>
+      <p class="fine" data-note="desktop" data-active="true">
+        Desktop is free. iPhone, iPad and Android require Haptic Pro. View <a href={withBase(PRICING_HREF)}>Pricing</a> for more details.
+      </p>
+      <p class="fine" data-note="mobile" data-active="false">
+        iPhone, iPad and Android require Haptic Pro. Desktop is free. View <a href={withBase(PRICING_HREF)}>Pricing</a> for more details.
+      </p>
     </div>
 
     <div class="others" data-reveal>
@@ -101,22 +111,29 @@ const LEAD = 'Build from anywhere, anytime.';
     position: relative;
     isolation: isolate;
     overflow: clip;
-    padding: calc(124 * var(--u)) var(--gutter) calc(150 * var(--u));
+    padding: calc(124 * var(--u)) var(--gutter) calc(40 * var(--u));
     background: var(--c-bg);
   }
 
+  /* The bloom reaches further down than the section does, so it fades out
+     over the section's last 120u instead of being cut off by the footer. That
+     band starts below the fine print in every layout (at least 128u of the
+     section is left under it), so the fine print keeps the background it was
+     measured against (see .meta). */
   .backdrop {
     position: absolute;
     inset: 0;
     z-index: var(--z-bg);
     pointer-events: none;
+    mask-image: linear-gradient(#000 calc(100% - 120 * var(--u)), transparent);
   }
 
-  /* A faint, hero-coloured bloom behind the button. */
+  /* A faint, hero-coloured bloom behind the button, its brightest part under
+     the fine print (it sits 22u below the fine print's top, as it always has). */
   .glow {
     position: absolute;
     left: 50%;
-    top: calc(460 * var(--u));
+    top: calc(420 * var(--u));
     width: calc(1400 * var(--u));
     height: calc(900 * var(--u));
     translate: -50% -50%;
@@ -151,7 +168,7 @@ const LEAD = 'Build from anywhere, anytime.';
   .lead {
     position: relative;
     z-index: var(--z-content);
-    margin: calc(26 * var(--u)) 0 0;
+    margin: calc(18 * var(--u)) 0 0;
     font-family: var(--font-serif);
     font-size: calc(32 * var(--u));
     font-weight: 400;
@@ -169,58 +186,60 @@ const LEAD = 'Build from anywhere, anytime.';
     justify-content: center;
     gap: calc(28 * var(--u));
     min-height: max(56px, calc(84 * var(--u)));
-    margin-top: calc(68 * var(--u));
+    margin-top: calc(40 * var(--u));
   }
 
+  /* The fine print: both variants share one grid cell, so the block is as tall as the longer and never reflows.
+     Small, regular weight and muted, set close under the button. It sits over the brightest part of the glow, so the
+     colour is the dimmest white that stays above 4.5:1 there: measured over the real glow and grain, about 5:1
+     against the average background and over 4.5:1 against its brightest patches (every platform, desktop and phone). */
   .meta {
+    --c-fine: rgb(255 255 255 / 0.7);
     position: relative;
     z-index: var(--z-content);
-    margin-top: calc(32 * var(--u));
-  }
-
-  /* Both notes share one grid cell, so the block is as tall as the longer and never reflows. */
-  .notes {
     display: grid;
     justify-items: center;
-    font-size: max(17px, calc(20 * var(--u)));
-    line-height: 1.45;
-    color: var(--c-text-muted);
+    margin-top: calc(18 * var(--u));
+    font-size: max(14px, calc(15 * var(--u)));
+    font-weight: 400;
+    line-height: 1.5;
+    color: var(--c-fine);
   }
 
-  .note {
+  .fine {
     grid-area: 1 / 1;
-    max-width: max(340px, calc(800 * var(--u)));
+    max-width: max(340px, calc(720 * var(--u)));
     margin: 0;
     text-wrap: balance;
   }
 
-  .note[data-active='false'] {
+  .fine[data-active='false'] {
     visibility: hidden;
   }
 
-  .pro {
+  /* A plain inline link: same colour and size as the text around it, told apart by a thin, faint underline that
+     brightens (and turns the text white) on hover and keyboard focus. The vertical padding only enlarges the tap
+     area; it does not change the line height. */
+  .fine a {
+    padding-block: 0.3em;
+    text-decoration: underline;
+    text-decoration-color: rgb(255 255 255 / 0.5);
+    text-decoration-thickness: 1px;
+    text-underline-offset: 0.24em;
+    transition:
+      color 0.25s,
+      text-decoration-color 0.25s;
+  }
+
+  .fine a:hover,
+  .fine a:focus-visible {
     color: var(--c-text);
-    font-weight: 600;
+    text-decoration-color: currentColor;
   }
 
-  .pricing {
-    margin: calc(10 * var(--u)) 0 0;
-    font-size: max(20px, calc(24 * var(--u)));
-    line-height: 1.4;
-    color: var(--c-text-muted);
-    text-wrap: balance;
-  }
-
-  .pricing a {
-    color: var(--c-text);
-    font-weight: 700;
-    background: linear-gradient(90deg, var(--c-amber), var(--c-red)) 0 100% / 100% calc(2 * var(--u)) no-repeat;
-    padding-bottom: calc(2 * var(--u));
-    transition: background-size 0.3s var(--ease-out);
-  }
-
-  .pricing a:hover {
-    background-size: 100% calc(5 * var(--u));
+  /* The global focus ring, drawn closer so it hugs the word instead of touching its neighbours. */
+  .fine a:focus-visible {
+    outline-offset: 1px;
   }
 
   .others {
@@ -231,14 +250,14 @@ const LEAD = 'Build from anywhere, anytime.';
     position: relative;
     z-index: var(--z-media);
     width: min(100%, max(calc(900 * var(--u)), 600px));
-    margin-top: calc(88 * var(--u));
-    padding-top: calc(36 * var(--u));
+    margin-top: calc(40 * var(--u));
+    padding-top: calc(32 * var(--u));
     border-top: 1px solid var(--c-panel-line);
   }
 
   .others__label {
     margin: 0;
-    font-size: max(16px, calc(18 * var(--u)));
+    font-size: max(14px, calc(15 * var(--u)));
     color: var(--c-text-muted);
   }
 
@@ -262,6 +281,25 @@ const LEAD = 'Build from anywhere, anytime.';
 
   .others__list > [hidden] {
     display: none;
+  }
+
+  /* Wide enough for the label and any four platforms on one line (at most
+     about 650px; the row is at least 700px wide from here): one quiet line,
+     no rule above it, so the stack fits on the last screen with room to spare.
+     Narrower windows keep the label over the list. */
+  @media (min-width: 1000px) {
+    .others {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: calc(24 * var(--u));
+      padding-top: 0;
+      border-top: 0;
+    }
+
+    .others__list {
+      margin-top: 0;
+    }
   }
 
   .chip {
@@ -310,8 +348,10 @@ const LEAD = 'Build from anywhere, anytime.';
     border-radius: calc(var(--badge-h) * 0.15);
   }
 
-  /* The longest row (any four of the five platforms) is about 525px wide. The list is at least 600px wide from 650px up,
-     so only narrower screens can wrap it; reserve two rows there so the swap never moves the page. */
+  /* The longest row (any four of the five platforms) is about 525px wide. The
+     list has more room than that from 650px up (beside its label from 1000px,
+     still at least 580px), so only narrower screens can wrap it; reserve two
+     rows there so the swap never moves the page. */
   @media (max-width: 700px) {
     .others__list {
       min-height: calc(var(--chip-h) * 2 + var(--row-gap));
@@ -320,7 +360,7 @@ const LEAD = 'Build from anywhere, anytime.';
 
   @media (max-width: 820px) {
     .download {
-      padding: 92px var(--gutter) 88px;
+      padding: 92px var(--gutter) 56px;
     }
 
     .glow {
@@ -346,25 +386,16 @@ const LEAD = 'Build from anywhere, anytime.';
     }
 
     .meta {
-      margin-top: 26px;
-    }
-
-    .pricing {
-      margin-top: 8px;
-    }
-
-    .pricing a {
-      padding-bottom: 2px;
-      background-size: 100% 2px;
+      margin-top: 18px;
     }
 
     .others {
-      margin-top: 56px;
-      padding-top: 28px;
+      margin-top: 48px;
+      padding-top: 24px;
     }
 
     .others__list {
-      margin-top: 16px;
+      margin-top: 14px;
     }
 
     .chip {
@@ -385,6 +416,17 @@ const LEAD = 'Build from anywhere, anytime.';
   @media (prefers-reduced-motion: reduce) {
     .store:hover {
       transform: none;
+    }
+  }
+
+  /* Visitors who ask for more contrast get brighter fine print and a solid underline. */
+  @media (prefers-contrast: more) {
+    .meta {
+      --c-fine: rgb(255 255 255 / 0.9);
+    }
+
+    .fine a {
+      text-decoration-color: currentColor;
     }
   }
 </style>

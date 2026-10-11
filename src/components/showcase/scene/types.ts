@@ -14,20 +14,23 @@ export const SCREEN_ON_ANGLE = 70;
  * motion looks like the curve the timeline gave it.
  */
 export interface SceneState {
-  /** MacBook arrives: rises, closed, from below the frame. */
+  /** MacBook arrives: rises from below the frame (it starts shut; the lid opens during the rise, see `open`). */
   rise: number;
-  /** MacBook turns from three-quarter to frontal (closed). */
+  /** MacBook turns from three-quarter view to face front as it rises. */
   turn: number;
-  /** Lid opens. */
+  /** Lid opens (it starts while the MacBook is still turning). */
   open: number;
   /** Display powers on. */
   screen: number;
-  /** iPad slides in from the left on its stand. */
+  /** iPad comes in from the left on its stand, turning to face the front as it slides. */
   ipad: number;
-  /** iPhone rises. */
+  /** iPhone rises into place, turning from its back to its front as it rises. */
   phone: number;
-  /** iPhone turns from its back to its front. */
-  flip: number;
+  /**
+   * Stacked layout: the group of devices, brought nearer the camera while the
+   * MacBook is alone, settles back to make room as the others join.
+   */
+  settle: number;
   /** Camera: a very slow dolly-in over the whole sequence (1 = the framed distance). */
   dolly: number;
 }
@@ -39,7 +42,7 @@ export const initialState = (): SceneState => ({
   screen: 0,
   ipad: 0,
   phone: 0,
-  flip: 0,
+  settle: 0,
   dolly: 0,
 });
 
@@ -50,7 +53,7 @@ export const finalState = (): SceneState => ({
   screen: 1,
   ipad: 1,
   phone: 1,
-  flip: 1,
+  settle: 1,
   dolly: 1,
 });
 

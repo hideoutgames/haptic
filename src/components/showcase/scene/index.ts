@@ -43,10 +43,12 @@ import {
   finalState,
   initialState,
   LAYOUTS,
+  PHONE_DROP,
   worldShift,
   type Layout,
   type SceneState,
   type ShadowSpec,
+  type Starts,
 } from './choreography';
 import { createEnvironment, createLights } from './environment';
 import { frameCamera, pointsOf } from './framing';
@@ -75,8 +77,11 @@ const SOFTWARE_STEPS = [1, 0.85, 0.72];
 
 const SCREEN_SIZES = { tablet: { w: 2360, h: 1640 }, projects: { w: 1179, h: 2556 } };
 
-/** How far past the canvas's left edge the iPad is when its slide starts (CSS px). */
-const ARRIVAL_MARGIN = 2;
+/**
+ * How far out of sight the iPad and the iPhone are as their entrances start
+ * (CSS px past the canvas's left and bottom edges).
+ */
+const START_MARGIN = 2;
 
 /** Ratios from largest to smallest for a canvas of this size. */
 function ladderFor(width: number, height: number, lite: boolean): number[] {
@@ -191,8 +196,8 @@ export async function createShowcaseScene(opts: SceneOptions): Promise<ShowcaseS
   const state = opts.state ?? initialState();
   const models = { mac, ipad, phone };
   let layout: Layout = LAYOUTS.wide;
-  /** How far left of its resting place the iPad starts its slide (mm): found for each canvas by `fitArrival`. */
-  let arrivalDx = layout.arrival.dx;
+  /** Where the iPad and the iPhone start their entrances: fitted to each canvas by `fitStarts`. */
+  const starts: Starts = { ipadDx: layout.arrival.dx, phoneDrop: PHONE_DROP };
   let active = false;
   let dirty = true;
   let disposed = false;
@@ -217,7 +222,7 @@ export async function createShowcaseScene(opts: SceneOptions): Promise<ShowcaseS
       const k = STATE_KEYS[i];
       eff[k] = override && src === state && override[k] !== undefined ? (override[k] as number) : src[k];
     }
-    const placement = applyState(models, eff, layout, arrivalDx);
+    const placement = applyState(models, eff, layout, starts);
     world.position.z = worldShift(eff, layout);
     setShadow(shadows.mac, placement.mac, MAC_SHADOW);
     setShadow(shadows.ipad, placement.ipad, ipadShadow);
@@ -229,11 +234,14 @@ export async function createShowcaseScene(opts: SceneOptions): Promise<ShowcaseS
   /**
    * Everything the choreography can show: the world-space box
    * around the devices and their shadows in sampled poses (each state value
-   * swept on its own, from the start and from the finished state, which covers
-   * every device whose pose follows its own values). The poses themselves
-   * live in choreography.ts; this only measures them, so it follows changes
-   * there. Measured again whenever the layout or the canvas size changes (a
-   * few milliseconds), since poses may depend on the viewport.
+   * swept on its own, from the start and from the finished state). The box
+   * also holds the poses where moves overlap (the MacBook rising, turning and
+   * opening at once): each device follows only its own values, and each value
+   * moves it along an axis of its own or between extremes that the sweeps
+   * reach, so the box around the sweeps holds every mix of them. The poses
+   * themselves live in choreography.ts; this only measures them, so it
+   * follows changes there. Measured again whenever the layout or the canvas
+   * size changes (a few milliseconds), since poses may depend on the viewport.
    */
   const reach = new Box3();
   let reachKey = '';
@@ -326,36 +334,56 @@ export async function createShowcaseScene(opts: SceneOptions): Promise<ShowcaseS
   };
 
   /**
-   * Finds where the iPad starts its slide on this canvas: the distance left of
-   * its resting place at which it and its stand, turned as they start and seen
-   * from where the dolly starts (the farthest the camera gets), are just past
-   * the left edge. Whatever the screen's shape, it then comes into view at the
-   * start of its beat, neither popping in partly on screen (too short a slide)
-   * nor spending the first part of the beat out of sight (too long a one).
+   * The distance (mm) at which `edge(distance)`, a position on screen (CSS px)
+   * close to linear in it, reaches `target`: secant steps from `guess`.
    */
-  const fitArrival = () => {
-    const start = finalState();
-    start.ipad = 0;
-    start.dolly = 0;
-    /** Right-most point (CSS px) of the iPad and its stand with the iPad `dx` left of its place. */
-    const rightEdge = (dx: number) => {
-      arrivalDx = dx;
-      pose(start);
-      return screenBox(ipad.group).right;
-    };
-    // Secant steps: the position on screen is close to linear in the distance.
-    let dx0 = layout.arrival.dx;
-    let x0 = rightEdge(dx0);
-    let dx1 = dx0 + 40;
-    let x1 = rightEdge(dx1);
-    for (let i = 0; i < 8 && Math.abs(x1 + ARRIVAL_MARGIN) > 0.5 && x1 !== x0; i++) {
-      const next = Math.max(0, dx1 + ((-ARRIVAL_MARGIN - x1) * (dx1 - dx0)) / (x1 - x0));
-      dx0 = dx1;
-      x0 = x1;
-      dx1 = next;
-      x1 = rightEdge(dx1);
+  const solveDistance = (edge: (distance: number) => number, guess: number, target: number) => {
+    let d0 = guess;
+    let e0 = edge(d0) - target;
+    let d1 = d0 + 40;
+    let e1 = edge(d1) - target;
+    for (let i = 0; i < 8 && Math.abs(e1) > 0.5 && e1 !== e0; i++) {
+      const next = Math.max(0, d1 - (e1 * (d1 - d0)) / (e1 - e0));
+      d0 = d1;
+      e0 = e1;
+      d1 = next;
+      e1 = edge(d1) - target;
     }
-    arrivalDx = dx1;
+    return d1;
+  };
+
+  /**
+   * Fits where the iPad and the iPhone start on this canvas (`Starts`): the
+   * iPad, turned side-on as it starts, so that it and its stand are just past
+   * the left edge; the iPhone, on its back as it starts, so that its top is
+   * just below the bottom edge. Both are seen from where the dolly starts (the
+   * farthest the camera gets, which shows the most) and with the group settled
+   * back (stacked: the farthest it gets, which draws them nearest the middle).
+   * Whatever the screen's shape, each then comes into view as its beat starts.
+   */
+  const fitStarts = () => {
+    const start = finalState();
+    start.dolly = 0;
+    start.ipad = 0;
+    start.phone = 0;
+    starts.ipadDx = solveDistance(
+      (dx) => {
+        starts.ipadDx = dx;
+        pose(start);
+        return screenBox(ipad.group).right;
+      },
+      layout.arrival.dx,
+      -START_MARGIN,
+    );
+    starts.phoneDrop = solveDistance(
+      (drop) => {
+        starts.phoneDrop = drop;
+        pose(start);
+        return screenBox(phone.group).top;
+      },
+      PHONE_DROP,
+      cssHeight + START_MARGIN,
+    );
     pose();
   };
 
@@ -409,8 +437,8 @@ export async function createShowcaseScene(opts: SceneOptions): Promise<ShowcaseS
     camCentre.copy(framed.centre);
     camDir.copy(framed.dir);
     camDistance = framed.distance;
-    // The iPad's start depends on the canvas, and the depth range must cover it.
-    fitArrival();
+    // Where the iPad and the iPhone start depends on the canvas, and the depth range must cover it.
+    fitStarts();
     fitDepthRange();
     pose();
     dirty = true;
@@ -481,7 +509,7 @@ export async function createShowcaseScene(opts: SceneOptions): Promise<ShowcaseS
     });
     const gl = renderer.getContext();
     const px = new Uint8Array(4);
-    const states: Array<Partial<SceneState>> = lite ? [{}] : [{ ipad: 0, phone: 0 }, { phone: 0 }, { flip: 0 }, {}];
+    const states: Array<Partial<SceneState>> = lite ? [{}] : [{ ipad: 0, phone: 0 }, { ipad: 0.5, phone: 0 }, { phone: 0.5 }, {}];
     for (const patch of states) {
       Object.assign(warm, finalState(), patch);
       pose(warm);
@@ -535,6 +563,7 @@ export async function createShowcaseScene(opts: SceneOptions): Promise<ShowcaseS
       materials,
       shadows,
       screenBounds,
+      starts: () => ({ ...starts }),
       governor,
       lite,
       flags: () => ({ active, dirty, disposed, contextLost, unusable }),
