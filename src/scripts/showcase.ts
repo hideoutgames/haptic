@@ -16,10 +16,11 @@
  *    0.70 – 1.45   the iPad slides in on its stand from just outside the left
  *                  edge, turning to face the front as it goes ("Tablet" from
  *                  0.96, once it is well in view)
- *    1.45 – 1.55   hold: "Tablet" (the iPad's last stretch is a slow settle)
- *    1.55 – 2.25   the iPhone rises into place, turning from its back to its
- *                  front as it rises, showing Projects ("Phone" from 1.77)
- *    2.25 – 2.50   final hold, then the pin releases
+ *    1.45 – 1.50   hold: "Tablet" (the iPad's last stretch is a slow settle)
+ *    1.50 – 2.20   the iPhone rises into place from just below the frame,
+ *                  turning from its back to its front as it rises, showing
+ *                  Projects ("Phone" from 1.72)
+ *    2.20 – 2.50   final hold, then the pin releases
  *
  * One timeline runs the whole film, from the moment the section scrolls in
  * to the end of the pin, under one scrub (the pin is a ScrollTrigger of its
@@ -27,13 +28,19 @@
  * where the pin starts. The eases are chosen per kind of move (`EASE`; no
  * overshoot), the scrub's catch-up smooths the scroll steps, and everything
  * plays in reverse when scrolling back. The camera dollies in a few per cent
- * over the whole film.
+ * over the whole film. (The scene fits where the iPad and the iPhone start to
+ * each canvas, so each comes into view as its beat starts, whatever the
+ * screen's shape.)
  *
- * The scrub's catch-up (1.3 s, an expo ease restarted on every scroll update:
- * in effect a lag of about 0.2 s on top of Lenis' own smoothing) is what turns
- * the wheel's steps into a glide; it stays as it was. The film is shorter, so
- * that lag is a larger share of it at the end: the last move is done a
- * quarter of a screen before the pin releases.
+ * The scrub's catch-up (`SCRUB`: an expo ease restarted on every scroll
+ * update, in effect a lag of about 0.1 s on top of Lenis' own smoothing) turns
+ * the wheel's steps into a glide. It is kept short because the film runs that
+ * far behind the page: the page stops dead where the pin catches it, while the
+ * film is still behind. With a longer catch-up (1.3 s), a brisk scroll reached
+ * the pin before the MacBook's own move had got going, so the MacBook stopped
+ * with the page and then surged as the film caught up, and the pin let go
+ * before the iPhone had settled. The last move ends 0.3 screens before the pin
+ * releases, which covers the lag up to brisk scrolling (2.5 screens a second).
  *
  * Two renderers share one timeline. The default is the 2D rig of the page (the
  * device-frame pictures, moved with xPercent/yPercent so the same timeline
@@ -96,14 +103,14 @@ const T = {
   ipad: 0.7,
   ipadDur: 0.75,
   /** The iPhone rises into place, turning from its back to its front as it rises. */
-  phone: 1.55,
+  phone: 1.5,
   phoneDur: 0.7,
   /** End of the pin: the finished composition is held from the last move to here. */
   end: 2.5,
 };
 
 /** The stacked layout's film runs at this many screens per unit of `T`. */
-const STACKED_SCALE = 0.875;
+const STACKED_SCALE = 0.9;
 
 /**
  * The curves, by kind of move. The scene maps its state linearly, so these
@@ -127,6 +134,9 @@ const EASE = {
   /** Fades, the copy and the camera. */
   soft: 'sine.inOut',
 };
+
+/** The film's catch-up after the scroll (seconds): see the file header. */
+const SCRUB = 0.8;
 
 /**
  * Copy: the old line fades out over `out`, then the new one fades in over
@@ -191,19 +201,26 @@ export function initShowcase(root: HTMLElement): void {
   if (!stage || !group || !mac || !ipad || !iphone || !fill || copy.length < 3) return;
 
   /**
-   * The xPercent that moves a device of the 2D rig just past the left edge of
-   * the stage, turned `turn` degrees about its vertical centre line and
-   * scaled `scale` as it starts, measured without its transforms (which
-   * offsets ignore), so a tween can start from it again on every refresh.
+   * The xPercent that puts a device of the 2D rig just past the left edge of
+   * the stage (by 2% of its width) as it starts: turned `turn` degrees about
+   * its vertical centre line and scaled `scale`, seen in PERSPECTIVE.
+   * Measured without its transforms (which offsets ignore), so a tween can
+   * start from it again on every refresh.
    */
   const offStageLeft = (el: HTMLElement, turn: number, scale: number) => {
     let left = 0;
     for (let e: HTMLElement | null = el; e && e !== stage; e = e.offsetParent as HTMLElement | null) left += e.offsetLeft;
-    // The turned element's right edge recedes, foreshortened and pulled in by the perspective.
-    const half = (el.offsetWidth / 2) * scale;
+    const width = el.offsetWidth;
+    // GSAP writes the perspective first, so it applies after the translation,
+    // about the element's centre: a point x from the centre and z towards the
+    // viewer is drawn at x·P/(P − z). The turned right edge sits half·cos(a)
+    // right of the centre and half·sin(a) away from the viewer; solve for the
+    // translation that draws it at the stage's left edge.
+    const half = (width / 2) * scale;
     const a = (turn * Math.PI) / 180;
-    const reach = (half * Math.cos(a) * PERSPECTIVE) / (PERSPECTIVE + half * Math.sin(a));
-    return -((left + el.offsetWidth / 2 + reach) / el.offsetWidth) * 100 - 2;
+    const depthScale = PERSPECTIVE / (PERSPECTIVE + half * Math.sin(a));
+    const translate = -(left + width / 2 + width * 0.02) / depthScale - half * Math.cos(a);
+    return (translate / width) * 100;
   };
 
   const mm = gsap.matchMedia();
@@ -239,9 +256,7 @@ export function initShowcase(root: HTMLElement): void {
         trigger: root,
         start: () => `top ${-T.arrive * unit()}px`,
         end: () => `+=${(T.end - T.arrive) * unit()}`,
-        // The film glides after the scroll (a catch-up of this many seconds)
-        // instead of following each step of the wheel.
-        scrub: 1.3,
+        scrub: SCRUB,
         invalidateOnRefresh: true,
       },
       // The step follows the scrubbed timeline (not the raw scroll position), so
@@ -332,8 +347,9 @@ export function initShowcase(root: HTMLElement): void {
       at(T.ipad),
     );
 
-    // 3. The iPhone rises into place from below the frame, turning as it
-    // rises (3D: from its back to its front; 2D: from turned to the right).
+    // 3. The iPhone rises into place from just below the frame, turning as it
+    // rises (3D: from its back to its front; 2D: from turned to the right,
+    // fading in as it rises).
     tl.fromTo(
       iphone,
       { xPercent: -6, yPercent: 16, scale: 0.7, rotationY: TURN_2D.iphone, transformPerspective: PERSPECTIVE },

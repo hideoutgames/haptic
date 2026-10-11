@@ -62,9 +62,9 @@ export interface Layout {
    * comes into view side-on, its screen seen at a glancing angle, and opens up
    * towards the viewer as it slides into place. How far left of its resting
    * place it starts depends on the screen: the scene fits the distance that
-   * starts it just outside the canvas (`fitArrival` in index.ts), and `dx`
-   * (mm) is only where that search starts. It starts `dz` (mm) nearer the
-   * viewer, so it is pushed back into place.
+   * starts it just outside the canvas (`Starts`), and `dx` (mm) is only where
+   * that search starts. It starts `dz` (mm) nearer the viewer, so it is
+   * pushed back into place.
    */
   arrival: { dx: number; dz: number; yaw: number };
   /**
@@ -143,14 +143,34 @@ export interface Placement {
 }
 
 /**
- * How far below the floor (mm) the MacBook and the iPhone start. The MacBook
- * mostly arrives with the page scrolling in, so it only lifts a little (the
- * last of it after the pin has stopped the page, so it glides to rest); the
- * iPhone starts just below the bottom edge of the frame (more would be time
- * spent out of sight).
+ * Where the iPad and the iPhone start their entrances (mm). Each starts just
+ * out of sight, so that it comes into view at the very start of its beat,
+ * neither popping in partly on screen (too short a way in) nor spending the
+ * first part of its beat out of sight (too long a one). Where that is depends
+ * on the shape of the screen, so the scene fits both to the canvas
+ * (`fitStarts` in index.ts); the layout gives only where those searches start.
+ */
+export interface Starts {
+  /** How far left of its resting place the iPad starts its slide. */
+  ipadDx: number;
+  /** How far below the ground the iPhone starts its rise. */
+  phoneDrop: number;
+}
+
+/**
+ * How far below the floor (mm) the MacBook starts. It mostly arrives with the
+ * page scrolling in, so it only lifts a little (the last of it after the pin
+ * has stopped the page, so it glides to rest).
  */
 const MAC_RISE = 60;
-const PHONE_RISE = 200;
+/** Where the search for the iPhone's start (`Starts.phoneDrop`) begins (mm below the ground). */
+export const PHONE_DROP = 200;
+/**
+ * The iPhone's contact shadow fades in over the last this many mm of its rise,
+ * or over all of it if it starts nearer: the shadow lies in view, where the
+ * iPhone comes to rest, while the iPhone itself is still out of sight.
+ */
+const PHONE_SHADOW_IN = 200;
 /**
  * The iPad's shadows fade in over this first part of its slide: their soft
  * edges reach a little past it, and would otherwise show at the edge of the
@@ -198,11 +218,8 @@ export function dollyFactor(s: SceneState): number {
   return 1 + DOLLY * (1 - clamp01(s.dolly));
 }
 
-/**
- * `arrivalDx` is how far left of its resting place the iPad starts (mm): the
- * scene passes the distance that starts it just outside the canvas.
- */
-export function applyState(models: Models, s: SceneState, L: Layout, arrivalDx: number): Placement {
+/** `starts`: where the iPad and the iPhone start on this canvas (the scene fits them). */
+export function applyState(models: Models, s: SceneState, L: Layout, starts: Starts): Placement {
   const { mac, ipad, phone } = models;
 
   // ---- MacBook: rises and turns to face front at once; the lid opens as the turn settles ----
@@ -228,21 +245,18 @@ export function applyState(models: Models, s: SceneState, L: Layout, arrivalDx: 
   ipad.setLean(L.ipad.pitch);
   placeStanding(
     ipad.group,
-    L.ipad.x - arrivalDx * away,
+    L.ipad.x - starts.ipadDx * away,
     ipad.restHeight,
     L.ipad.z + L.arrival.dz * away,
     L.ipad.yaw + L.arrival.yaw * away,
     L.ipad.pitch,
   );
 
-  // ---- iPhone: rises into place, turning from its back to its front as it rises ----
+  // ---- iPhone: rises into place from just below the frame, turning from its back to its front as it rises ----
   const q = clamp01(s.phone);
   phone.group.visible = q > 0.001;
-  {
-    const f = L.phone;
-    const y = -(1 - q) * PHONE_RISE;
-    place(phone.group, f.x, y, f.z, lerp(Math.PI, f.yaw, q), f.pitch);
-  }
+  const phoneY = -(1 - q) * starts.phoneDrop;
+  place(phone.group, L.phone.x, phoneY, L.phone.z, lerp(Math.PI, L.phone.yaw, q), L.phone.pitch);
 
   const p = placement;
   p.mac.x = macX;
@@ -260,7 +274,7 @@ export function applyState(models: Models, s: SceneState, L: Layout, arrivalDx: 
   p.phone.x = L.phone.x;
   p.phone.z = L.phone.z;
   p.phone.yaw = phone.group.rotation.y;
-  p.phone.strength = phone.group.visible ? smooth(-200, -10, phone.group.position.y) : 0;
-  p.phone.lift = Math.max(0, phone.group.position.y);
+  p.phone.strength = phone.group.visible ? smooth(-Math.min(starts.phoneDrop, PHONE_SHADOW_IN), -10, phoneY) : 0;
+  p.phone.lift = Math.max(0, phoneY);
   return p;
 }
