@@ -1,7 +1,9 @@
 ---
 /**
- * Download section: an OS-aware primary button, a Haptic Pro note, the
- * pricing line and a row of every other platform.
+ * Download section: an OS-aware primary button, one line of quiet fine print
+ * (the Haptic Pro note and the pricing link) and a row of every other platform.
+ * The button is the only focal point: everything else is deliberately small
+ * and muted, and the fine print carries no bold or coloured emphasis.
  *
  * Server-rendered default (also what no-JS visitors get): the three desktop
  * buttons, with the mobile stores in the "Other platforms" row. platform.ts
@@ -34,16 +36,15 @@ const LEAD = 'Build from anywhere, anytime.';
       {PLATFORMS.map((platform) => <DownloadButton platform={platform} hidden={platform.group === 'mobile'} />)}
     </div>
 
+    <!-- One paragraph per variant (platform.ts shows the one for the visitor's group); the hidden one is
+         visibility:hidden, so its link is neither focusable nor read out. -->
     <div class="meta" data-reveal>
-      <div class="notes">
-        <p class="note" data-note="desktop" data-active="true">
-          Desktop is free. iPhone, iPad and Android require <span class="pro">Haptic Pro</span>.
-        </p>
-        <p class="note" data-note="mobile" data-active="false">
-          iPhone, iPad and Android require <span class="pro">Haptic Pro</span>. Desktop is free.
-        </p>
-      </div>
-      <p class="pricing">View <a href={withBase(PRICING_HREF)}>Pricing</a> for more details.</p>
+      <p class="fine" data-note="desktop" data-active="true">
+        Desktop is free. iPhone, iPad and Android require Haptic Pro. View <a href={withBase(PRICING_HREF)}>Pricing</a> for more details.
+      </p>
+      <p class="fine" data-note="mobile" data-active="false">
+        iPhone, iPad and Android require Haptic Pro. Desktop is free. View <a href={withBase(PRICING_HREF)}>Pricing</a> for more details.
+      </p>
     </div>
 
     <div class="others" data-reveal>
@@ -172,55 +173,57 @@ const LEAD = 'Build from anywhere, anytime.';
     margin-top: calc(68 * var(--u));
   }
 
+  /* The fine print: both variants share one grid cell, so the block is as tall as the longer and never reflows.
+     Small, regular weight and muted, set close under the button. It sits over the brightest part of the glow, so the
+     colour is the dimmest white that stays above 4.5:1 there: measured over the real glow and grain, about 5:1
+     against the average background and over 4.5:1 against its brightest patches (every platform, desktop and phone). */
   .meta {
+    --c-fine: rgb(255 255 255 / 0.7);
     position: relative;
     z-index: var(--z-content);
-    margin-top: calc(32 * var(--u));
-  }
-
-  /* Both notes share one grid cell, so the block is as tall as the longer and never reflows. */
-  .notes {
     display: grid;
     justify-items: center;
-    font-size: max(17px, calc(20 * var(--u)));
-    line-height: 1.45;
-    color: var(--c-text-muted);
+    margin-top: calc(22 * var(--u));
+    font-size: max(14px, calc(15 * var(--u)));
+    font-weight: 400;
+    line-height: 1.5;
+    color: var(--c-fine);
   }
 
-  .note {
+  .fine {
     grid-area: 1 / 1;
-    max-width: max(340px, calc(800 * var(--u)));
+    max-width: max(340px, calc(720 * var(--u)));
     margin: 0;
     text-wrap: balance;
   }
 
-  .note[data-active='false'] {
+  .fine[data-active='false'] {
     visibility: hidden;
   }
 
-  .pro {
+  /* A plain inline link: same colour and size as the text around it, told apart by a thin, faint underline that
+     brightens (and turns the text white) on hover and keyboard focus. The vertical padding only enlarges the tap
+     area; it does not change the line height. */
+  .fine a {
+    padding-block: 0.3em;
+    text-decoration: underline;
+    text-decoration-color: rgb(255 255 255 / 0.5);
+    text-decoration-thickness: 1px;
+    text-underline-offset: 0.24em;
+    transition:
+      color 0.25s,
+      text-decoration-color 0.25s;
+  }
+
+  .fine a:hover,
+  .fine a:focus-visible {
     color: var(--c-text);
-    font-weight: 600;
+    text-decoration-color: currentColor;
   }
 
-  .pricing {
-    margin: calc(10 * var(--u)) 0 0;
-    font-size: max(20px, calc(24 * var(--u)));
-    line-height: 1.4;
-    color: var(--c-text-muted);
-    text-wrap: balance;
-  }
-
-  .pricing a {
-    color: var(--c-text);
-    font-weight: 700;
-    background: linear-gradient(90deg, var(--c-amber), var(--c-red)) 0 100% / 100% calc(2 * var(--u)) no-repeat;
-    padding-bottom: calc(2 * var(--u));
-    transition: background-size 0.3s var(--ease-out);
-  }
-
-  .pricing a:hover {
-    background-size: 100% calc(5 * var(--u));
+  /* The global focus ring, drawn closer so it hugs the word instead of touching its neighbours. */
+  .fine a:focus-visible {
+    outline-offset: 1px;
   }
 
   .others {
@@ -238,7 +241,7 @@ const LEAD = 'Build from anywhere, anytime.';
 
   .others__label {
     margin: 0;
-    font-size: max(16px, calc(18 * var(--u)));
+    font-size: max(14px, calc(15 * var(--u)));
     color: var(--c-text-muted);
   }
 
@@ -346,16 +349,7 @@ const LEAD = 'Build from anywhere, anytime.';
     }
 
     .meta {
-      margin-top: 26px;
-    }
-
-    .pricing {
-      margin-top: 8px;
-    }
-
-    .pricing a {
-      padding-bottom: 2px;
-      background-size: 100% 2px;
+      margin-top: 18px;
     }
 
     .others {
@@ -385,6 +379,17 @@ const LEAD = 'Build from anywhere, anytime.';
   @media (prefers-reduced-motion: reduce) {
     .store:hover {
       transform: none;
+    }
+  }
+
+  /* Visitors who ask for more contrast get brighter fine print and a solid underline. */
+  @media (prefers-contrast: more) {
+    .meta {
+      --c-fine: rgb(255 255 255 / 0.9);
+    }
+
+    .fine a {
+      text-decoration-color: currentColor;
     }
   }
 </style>
