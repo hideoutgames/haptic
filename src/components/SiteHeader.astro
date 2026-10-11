@@ -40,6 +40,14 @@ const menuId = 'site-menu';
   <MenuPanel id={menuId} {pages} {learning} {currentPath} />
 </header>
 
+<noscript>
+  <style is:inline>
+    .site-header {
+      --fade-from: -100px;
+    }
+  </style>
+</noscript>
+
 <script>
   import '../components/header/header.ts';
 </script>
@@ -51,12 +59,16 @@ const menuId = 'site-menu';
     --m: max(var(--u), 0.9px);
     --safe-top: env(safe-area-inset-top, 0px);
     /* Fade under the H: a wide, shallow ellipse centred just below the H's
-       middle (between the H and the open bar). It reads as a soft shade hanging
-       from the top edge, ends above the showcase copy and only grazes the
-       devices beside it. */
-    --fade-x: calc(400 * var(--m));
-    --fade-y: calc(72 * var(--m));
-    --fade-cy: calc(var(--safe-top) + 35 * var(--m));
+       middle. It reads as a soft shade hanging from the top edge, ends above
+       the showcase heading and only grazes the devices beside it. That heading
+       is never less than 15svh down (DeviceShowcase.astro: 0.66svh - 401 *
+       0.00127svh once the viewport is short), and its letters start about 4px
+       below its box, so on short screens (landscape phones, small laptop
+       windows) the ellipse gets shallower, and narrower in proportion. */
+    --fade-cy: calc(var(--safe-top) + 34 * var(--m));
+    --fade-y: clamp(18px, calc(15svh + 4px - 34 * var(--m)), calc(72 * var(--m)));
+    --fade-x: min(calc(400 * var(--m)), calc(var(--fade-y) * 5.5));
+    --fade-feather: calc(24 * var(--m));
     --fade-strength: 0.7;
     position: fixed;
     inset: 0 0 auto;
@@ -70,9 +82,13 @@ const menuId = 'site-menu';
    * The fade: black at full strength across the H and its fringes, then a
    * raised-cosine falloff (flat at both ends, so no edge or band shows) to
    * nothing. Behind it, a band as tall as the safe-area inset keeps a phone's
-   * status bar readable too (zero height where there is no inset). header.ts
-   * ramps --scrim from 0 to 1 over the first 140px of scroll, so the hero
-   * shows untouched at the top of the page; without JS it is simply on.
+   * status bar readable too (zero height where there is no inset).
+   *
+   * It only covers what scrolls up below the hero's glow and lettering: the
+   * mask starts at --fade-from, which header.ts keeps on the top edge of the
+   * hero's editor window (feathered in just below it, so a frame of scroll
+   * lag never shades the glow). Until header.ts runs the fade is held back;
+   * without JS it is simply on (the <noscript> rule).
    */
   .site-header::before {
     content: '';
@@ -97,7 +113,15 @@ const menuId = 'site-menu';
         rgb(0 0 0 / 0.024) 92.8%,
         rgb(0 0 0 / 0) 100%
       );
-    opacity: calc(var(--fade-strength) * var(--scrim, 1));
+    -webkit-mask-image: linear-gradient(
+      transparent var(--fade-from, 100%),
+      #000 calc(var(--fade-from, 100%) + var(--fade-feather))
+    );
+    mask-image: linear-gradient(
+      transparent var(--fade-from, 100%),
+      #000 calc(var(--fade-from, 100%) + var(--fade-feather))
+    );
+    opacity: var(--fade-strength);
     pointer-events: none;
   }
 
@@ -142,9 +166,15 @@ const menuId = 'site-menu';
   @media (max-width: 820px) {
     .site-header {
       --m: 1px;
-      /* Phones: across the whole width (fading toward the edges), and ending
-         above the stacked showcase heading, which sits clamp(68px, 11svh, 92px)
-         below the safe area (DeviceShowcase.astro). */
+    }
+  }
+
+  /* Phones and tablets in portrait (the showcase's stacked layout, same query
+     as DeviceShowcase.astro): across the whole width (fading toward the
+     edges), and ending above the stacked showcase heading, which sits
+     clamp(68px, 11svh, 92px) below the safe area. */
+  @media (max-width: 820px) and (max-aspect-ratio: 1/1) {
+    .site-header {
       --fade-x: 70vw;
       --fade-y: clamp(44px, calc(11svh - 26px), 66px);
     }

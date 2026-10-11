@@ -173,7 +173,7 @@ const columns = [
   .menu__body {
     position: relative;
     display: grid;
-    grid-template-columns: calc(224 * var(--m)) 1fr;
+    grid-template-columns: calc(225 * var(--m)) 1fr;
     padding: calc(23.4 * var(--m)) var(--pad-r) calc(14.8 * var(--m)) var(--pad-l);
     /* Short windows: scroll inside the panel (the notch sits outside it). */
     max-height: calc(100dvh - var(--safe-top) - 77 * var(--m) - 16px);
@@ -200,6 +200,11 @@ const columns = [
   .menu__body ul {
     padding: 0;
     list-style: none;
+  }
+
+  /* In the mockup the page links sit 1.5px in from their column title. */
+  .menu__body .menu__col--engine ul {
+    padding-left: calc(1.5 * var(--m));
   }
 
   .menu__body .menu__title {
