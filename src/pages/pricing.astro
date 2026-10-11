@@ -5,11 +5,11 @@
  * (layouts/Page.astro).
  *
  * Haptic is free on desktop (Mac, Windows, Linux) while the person or company
- * using it makes less than REVENUE_LIMIT in revenue. iPhone, iPad and Android,
- * and any use above that revenue, need Haptic Pro: one subscription covers all
- * of a person's devices, and teams need one per seat. Its price is not set yet,
- * so the card says so (PRO_PRICE: put the price there when it is). No free
- * trial. Enterprise is by arrangement, through the contact address.
+ * using it makes less than REVENUE_LIMIT a year in revenue. iPhone, iPad and
+ * Android, and any use above that revenue, need Haptic Pro: one subscription
+ * covers all of a person's devices, and teams need one per seat. Its price is
+ * not set yet, so the card says so (PRO_PRICE: put the price there when it
+ * is). No free trial. Enterprise is by arrangement, through the contact address.
  *
  * Buttons: the free plan goes to the download section on the home page, Haptic
  * Pro to the sign-up page, Enterprise to an email.
@@ -26,8 +26,11 @@ import { withBase } from '../lib/paths';
 /** Haptic Pro's price as shown on its card, or null while it is not set. */
 const PRO_PRICE: string | null = null;
 
-/** Revenue above which Haptic needs a subscription, also on desktop. */
+/** Yearly revenue above which Haptic needs a subscription, also on desktop. */
 const REVENUE_LIMIT = '$50,000';
+
+/** The limit with its period, kept on one line ("$50,000 a year"). */
+const PER_YEAR = `${REVENUE_LIMIT}\u00a0a\u00a0year`;
 
 interface Plan {
   id: 'free' | 'pro' | 'enterprise';
@@ -47,7 +50,7 @@ const PLANS: Plan[] = [
     for: 'Desktop',
     name: 'Haptic',
     price: { text: 'Free' },
-    features: ['The full desktop editor', 'Mac, Windows and Linux', `For revenue under ${REVENUE_LIMIT}`],
+    features: ['The full desktop editor', 'Mac, Windows and Linux', `For revenue under ${PER_YEAR}`],
     cta: { label: 'Download', href: withBase('/#download') },
   },
   {
@@ -55,7 +58,7 @@ const PLANS: Plan[] = [
     for: 'Phone and tablet',
     name: 'Haptic Pro',
     price: PRO_PRICE ? { text: PRO_PRICE } : { text: 'Price coming soon', muted: true },
-    features: ['Haptic on iPhone, iPad and Android', 'One account for all your devices', `Needed above ${REVENUE_LIMIT} in revenue`],
+    features: ['Haptic on iPhone, iPad and Android', 'One account for all your devices', `For revenue over ${PER_YEAR}`],
     cta: { label: 'Get started', href: withBase('/signup') },
   },
   {
@@ -73,14 +76,14 @@ const PLANS: Plan[] = [
 const FAQ: FaqItem[] = [
   {
     q: 'Do I need a subscription to use Haptic?',
-    a: `Not on desktop: Haptic is free on Mac, Windows and Linux while you, or the company you work for, makes less than ${REVENUE_LIMIT} in revenue. To use it on iPhone, iPad or Android you need Haptic Pro.`,
+    a: `Not on desktop: Haptic is free on Mac, Windows and Linux while you, or the company you work for, makes less than ${PER_YEAR} in revenue. To use it on iPhone, iPad or Android you need Haptic Pro.`,
   },
   {
     q: 'Does one subscription cover all my devices?',
     a: 'Yes. One Haptic Pro subscription covers every phone and tablet you sign in on with your account.',
   },
   {
-    q: `What if I or my company make more than ${REVENUE_LIMIT} in revenue?`,
+    q: `What if I or my company make more than ${PER_YEAR}?`,
     a: `Then you need a Haptic Pro subscription, on desktop too. Teams need one subscription per seat: one for each person who uses Haptic. For a larger team, <a href="mailto:${SUPPORT_EMAIL}">contact us</a> about Enterprise.`,
   },
 ];
