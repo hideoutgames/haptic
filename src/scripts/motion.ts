@@ -14,12 +14,19 @@ export const prefersReducedMotion = (): boolean =>
 
 let lenis: Lenis | null = null;
 
+/** Length of a same-page glide (s): longer for a longer way, within bounds. */
+const glideDuration = (distance: number) => Math.min(2, 0.6 + Math.abs(distance) / 4000);
+const easeInOutCubic = (t: number) => (t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2);
+
 /**
- * Same-page #hash links glide with Lenis instead of jumping. The native jump is
- * cancelled (Lenis' own `anchors` option leaves it running): it would push a
- * history entry whose saved scroll position is already the target, so Back
- * would change the URL but leave the page where it is. Without Lenis (reduced
- * motion) the links keep their native behaviour.
+ * Same-page #hash links glide with Lenis instead of jumping: eased in and out
+ * over a time that grows with the distance, so even a long way (the hero's
+ * scroll prompt to the download section, past the whole device showcase)
+ * reads as one deliberate move rather than a jump that slows at the end. The
+ * native jump is cancelled (Lenis' own `anchors` option leaves it running): it
+ * would push a history entry whose saved scroll position is already the
+ * target, so Back would change the URL but leave the page where it is.
+ * Without Lenis (reduced motion) the links keep their native behaviour.
  */
 function smoothScrollToHash(e: MouseEvent): void {
   if (e.defaultPrevented || e.button !== 0 || e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) return;
@@ -29,7 +36,7 @@ function smoothScrollToHash(e: MouseEvent): void {
   if (!target) return;
 
   e.preventDefault();
-  lenis?.scrollTo(target);
+  lenis?.scrollTo(target, { duration: glideDuration(target.getBoundingClientRect().top), easing: easeInOutCubic });
   // Move focus to the target, as the native jump would (no ring: it's no control).
   target.tabIndex = -1;
   target.style.outline = 'none';

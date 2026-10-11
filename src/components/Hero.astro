@@ -72,7 +72,8 @@ const skySide = `--sky-left: ${skyEdges.left}; --sky-right: ${skyEdges.right}; -
       game engine
     </p>
 
-    <a class="scroll" href="#anywhere">
+    {/* Clicked, it skips the device showcase and glides straight to the download section. */}
+    <a class="scroll" href="#download">
       <span class="scroll__label">Scroll to find out more</span>
       <svg class="scroll__chevron" viewBox="0 0 14 8" width="14" height="8" aria-hidden="true" focusable="false">
         <path d="M0.75 0.75 7 6.75 13.25 0.75" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"></path>
@@ -394,9 +395,10 @@ const skySide = `--sky-left: ${skyEdges.left}; --sky-right: ${skyEdges.right}; -
     margin-top: calc(1.4 * var(--u));
   }
 
+  /* The chevron keeps bobbing gently for as long as the hero is up. */
   @media (prefers-reduced-motion: no-preference) {
     .scroll__chevron {
-      animation: bob 2.4s ease-in-out 1.8s 2;
+      animation: bob 2.4s ease-in-out 1.8s infinite;
     }
   }
 
