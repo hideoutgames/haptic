@@ -95,12 +95,16 @@ export const LAYOUTS: Record<Layout['id'], Layout> = {
     focus: { x: -18, y: 126, z: 77 },
     mac: { x: 0, z: 0, yaw: deg(0), open: LID_OPEN_ANGLE },
     // The iPad stands in the open lower left, to the left of the MacBook and in
-    // front of it, turned a little in towards it. A true-size iPad standing
-    // upright there would reach up into the copy, so it leans back on its
-    // stand, and it stands far enough forward (lower on screen) that its top
-    // edge stays well below the copy. The iPhone stands in front of the
-    // MacBook's left edge, beside it, covering only a corner of the display.
-    ipad: { x: -328, z: 238, yaw: deg(5), pitch: deg(54) },
+    // front of it, turned to face the camera: from out there, that is about 12
+    // degrees in, towards the MacBook. (Turned less, its sides ran together
+    // towards a point above the middle of the picture rather than above the
+    // iPad, and it looked lopsided.) A true-size iPad standing upright there
+    // would reach up into the copy, so it leans back on its stand, and it
+    // stands far enough forward (lower on screen) that its top edge stays
+    // below the copy (about 30px clear at 1280 × 800, 20px at 1024 × 768).
+    // The iPhone stands in front of the MacBook's left edge, beside it,
+    // covering only a corner of the display.
+    ipad: { x: -318, z: 272, yaw: deg(12), pitch: deg(50) },
     phone: { x: -124, z: 340, yaw: deg(4), pitch: deg(6) },
     entrance: { shiftX: 85, yaw: deg(-38), scale: 1 },
     arrival: { dx: 300, dz: 60, yaw: deg(105) },
@@ -170,11 +174,12 @@ const MAC_RISE = 60;
 /** Where the search for the iPhone's start (`Starts.phoneDrop`) begins (mm below the ground). */
 export const PHONE_DROP = 200;
 /**
- * The iPhone's contact shadow fades in over the last this many mm of its rise,
- * or over all of it if it starts nearer: the shadow lies in view, where the
- * iPhone comes to rest, while the iPhone itself is still out of sight.
+ * The iPhone's contact shadow fades in as it touches down, over the last this
+ * many mm of its rise. It rises from below the ground, so a shadow lying there
+ * any earlier is drawn across the part of it still below the ground: it would
+ * seem to rise through its own shadow.
  */
-const PHONE_SHADOW_IN = 200;
+const PHONE_SHADOW_IN = 8;
 /**
  * The iPad's shadows fade in over this first part of its slide: their soft
  * edges reach a little past it, and would otherwise show at the edge of the
@@ -278,7 +283,7 @@ export function applyState(models: Models, s: SceneState, L: Layout, starts: Sta
   p.phone.x = L.phone.x;
   p.phone.z = L.phone.z;
   p.phone.yaw = phone.group.rotation.y;
-  p.phone.strength = phone.group.visible ? smooth(-Math.min(starts.phoneDrop, PHONE_SHADOW_IN), -10, phoneY) : 0;
+  p.phone.strength = phone.group.visible ? smooth(-PHONE_SHADOW_IN, 0, phoneY) : 0;
   p.phone.lift = Math.max(0, phoneY);
   return p;
 }
