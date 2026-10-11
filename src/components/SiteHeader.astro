@@ -20,8 +20,11 @@ const pages = [
   { label: 'About', href: '/about' },
 ];
 
-/** "Learning Center" column. The docs are not online yet: a plain fragment for now. */
-const learning = [{ label: 'Documentation', href: '#docs' }];
+/**
+ * "Learning Center" column, without the deploy base. The docs live at /docs
+ * (the 404 page until they are online).
+ */
+const learning = [{ label: 'Documentation', href: '/docs' }];
 
 // Astro.url.pathname includes the deploy base; the page list above does not.
 const base = import.meta.env.BASE_URL.replace(/\/$/, '');
