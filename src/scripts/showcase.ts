@@ -54,6 +54,18 @@
  * stacked layout also lifts the 2D group as the devices join, to keep it
  * centred under the copy; the CSS says by how much.)
  *
+ * Touch scrolling is taken over while the film is on the page (GSAP's
+ * normalizeScroll, touch input only, from the moment the intro lets go of the
+ * page). Left native, a phone or tablet scrolls off the main thread: a swipe
+ * carries the page past the start or end of the pin before the script can fix
+ * or release the stage, so the stage overshoots and kicks back, and the
+ * toolbar sliding away can leave it short of the screen's height. Scrolled
+ * from the main thread, the pin moves in step with the page and the toolbar
+ * stays put. (The wheel stays with Lenis.) Late re-measures wait for the
+ * scroll to stop (`ScrollTrigger.refresh(true)`): a forced one in the middle
+ * of a swipe would unpin the stage, measure and pin it again, and kill the
+ * swipe's momentum with a jump.
+ *
  * There is a single matchMedia context on purpose. Reverting and rebuilding
  * the pin when the layout changes (rotation, resize, zoom) would reset the
  * scroll position to the top, so the layout-dependent pin length is read on
@@ -75,7 +87,7 @@ import {
   type ShowcaseScene,
 } from '../components/showcase/scene/types';
 import { getLenis, gsap, initSmoothScroll, ScrollTrigger } from './motion';
-import { track } from './preload';
+import { ready, track } from './preload';
 
 /**
  * The film, in screens of scroll from the start of the pin (negative: before
@@ -246,6 +258,15 @@ export function initShowcase(root: HTMLElement): void {
     let cancelled = false;
     const cleanups: Array<() => void> = [];
 
+    // Touch scrolling from the main thread, once the intro has let go of the
+    // page (it holds the scroll until then): see the file header.
+    const coarse = matchMedia('(any-pointer: coarse)').matches;
+    if (coarse) {
+      void ready.then(() => {
+        if (!cancelled) ScrollTrigger.normalizeScroll({ type: 'touch', allowNestedScroll: true });
+      });
+    }
+
     // Copy that is not the current step waits below its slot.
     gsap.set(copy.slice(1), { opacity: 0, yPercent: 20 });
 
@@ -282,7 +303,7 @@ export function initShowcase(root: HTMLElement): void {
     // and would see a transform-pinned stage lag behind: they keep the default.
     // This script runs before the layout's own, so Lenis may not exist yet:
     // initSmoothScroll is idempotent, and asking for it here settles the question.
-    const smoothScrolled = !!(getLenis() ?? initSmoothScroll()) && !matchMedia('(any-pointer: coarse)').matches;
+    const smoothScrolled = !!(getLenis() ?? initSmoothScroll()) && !coarse;
     const pin = ScrollTrigger.create({
       trigger: root,
       start: 'top top',
@@ -542,6 +563,7 @@ export function initShowcase(root: HTMLElement): void {
 
     return () => {
       cancelled = true;
+      if (coarse) ScrollTrigger.normalizeScroll(false);
       cleanups.forEach((fn) => fn());
       if (canvas?.isConnected) canvas.replaceWith(canvas.cloneNode(false));
       delete root.dataset.mode;
@@ -549,8 +571,9 @@ export function initShowcase(root: HTMLElement): void {
     };
   });
 
-  // Images are lazy and fonts swap in late; re-measure once they settle.
-  const refresh = gsap.delayedCall(0.15, () => ScrollTrigger.refresh()).pause();
+  // Images are lazy and fonts swap in late; re-measure once they settle, and
+  // once the scroll has stopped (see the file header).
+  const refresh = gsap.delayedCall(0.15, () => ScrollTrigger.refresh(true)).pause();
   const refreshSoon = () => refresh.restart(true);
   root.querySelectorAll('img').forEach((img) => {
     if (!img.complete) img.addEventListener('load', refreshSoon, { once: true });

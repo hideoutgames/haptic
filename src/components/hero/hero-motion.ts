@@ -21,8 +21,10 @@ import { ready } from '../../scripts/preload';
  */
 export function initHeroLoadIn(): void {
   if (!document.documentElement.classList.contains('is-loading')) return;
-  // Not at the reveal itself: the overlay fade and the load-in should get every frame.
-  void ready.then(() => window.setTimeout(() => ScrollTrigger.refresh(), 1200));
+  // Not at the reveal itself: the overlay fade and the load-in should get every
+  // frame. And not mid-scroll (`true` waits for the scroll to stop): a forced
+  // re-measure would interrupt a swipe with a jump.
+  void ready.then(() => window.setTimeout(() => ScrollTrigger.refresh(true), 1200));
 }
 
 export function initHeroParallax(hero: HTMLElement): void {
