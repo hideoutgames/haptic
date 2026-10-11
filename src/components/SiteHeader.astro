@@ -2,7 +2,8 @@
 /**
  * Site header: the H logo (fixed, top centre, always visible) is the menu
  * button; the popover lists the pages. A soft black fade under the H keeps it
- * legible over whatever scrolls beneath. Behaviour lives in header/header.ts.
+ * legible over whatever scrolls beneath, and while the menu is open the rest
+ * of the page is tinted a little darker. Behaviour lives in header/header.ts.
  */
 import HeaderLogo from './header/HeaderLogo.astro';
 import MenuPanel from './header/MenuPanel.astro';
@@ -26,6 +27,8 @@ const menuId = 'site-menu';
 ---
 
 <header class="site-header" data-site-header>
+  <div class="page-tint" aria-hidden="true"></div>
+
   <button
     class="menu-button"
     type="button"
@@ -39,14 +42,6 @@ const menuId = 'site-menu';
 
   <MenuPanel id={menuId} {pages} {learning} {currentPath} />
 </header>
-
-<noscript>
-  <style is:inline>
-    .site-header {
-      --fade-from: -100px;
-    }
-  </style>
-</noscript>
 
 <script>
   import '../components/header/header.ts';
@@ -68,8 +63,14 @@ const menuId = 'site-menu';
     --fade-cy: calc(var(--safe-top) + 34 * var(--m));
     --fade-y: clamp(18px, calc(15svh + 4px - 34 * var(--m)), calc(72 * var(--m)));
     --fade-x: min(calc(400 * var(--m)), calc(var(--fade-y) * 5.5));
-    --fade-feather: calc(24 * var(--m));
-    --fade-strength: 0.7;
+    /* At its core the fade takes white content (the HAPTIC lettering, the
+       download buttons) down to about 40% grey, which still leaves the H's
+       white more than 5:1 against it, without a heavy smudge on the hero's
+       bright glow. */
+    --fade-strength: 0.6;
+    /* Black over the rest of the page while the menu is open: dimmed, but the
+       page still reads clearly behind the panel. */
+    --tint-strength: 0.35;
     position: fixed;
     inset: 0 0 auto;
     z-index: var(--z-header);
@@ -82,13 +83,9 @@ const menuId = 'site-menu';
    * The fade: black at full strength across the H and its fringes, then a
    * raised-cosine falloff (flat at both ends, so no edge or band shows) to
    * nothing. Behind it, a band as tall as the safe-area inset keeps a phone's
-   * status bar readable too (zero height where there is no inset).
-   *
-   * It only covers what scrolls up below the hero's glow and lettering: the
-   * mask starts at --fade-from, which header.ts keeps on the top edge of the
-   * hero's editor window (feathered in just below it, so a frame of scroll
-   * lag never shades the glow). Until header.ts runs the fade is held back;
-   * without JS it is simply on (the <noscript> rule).
+   * status bar readable too (zero height where there is no inset). It is
+   * fixed with the header, so it is always under the H, over every section
+   * (the hero's lettering included) and at every scroll position.
    */
   .site-header::before {
     content: '';
@@ -113,16 +110,51 @@ const menuId = 'site-menu';
         rgb(0 0 0 / 0.024) 92.8%,
         rgb(0 0 0 / 0) 100%
       );
-    -webkit-mask-image: linear-gradient(
-      transparent var(--fade-from, 100%),
-      #000 calc(var(--fade-from, 100%) + var(--fade-feather))
-    );
-    mask-image: linear-gradient(
-      transparent var(--fade-from, 100%),
-      #000 calc(var(--fade-from, 100%) + var(--fade-feather))
-    );
     opacity: var(--fade-strength);
     pointer-events: none;
+  }
+
+  /*
+   * While the menu is open the page behind it is tinted a little darker. The
+   * layer sits in the header (above the page, below the fade, the button and
+   * the panel) and fades with the panel. It takes no pointers, so a click on
+   * the page still lands there and closes the menu, and it changes nothing
+   * about layout or scrolling. 100lvh: it still covers the page when a phone's
+   * toolbars slide away during a scroll.
+   */
+  .page-tint {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100vh;
+    height: 100lvh;
+    z-index: -2;
+    background: rgb(0 0 0 / var(--tint-strength));
+    opacity: 0;
+    visibility: hidden;
+    pointer-events: none;
+    transition:
+      opacity 0.18s ease,
+      visibility 0s linear 0.18s;
+  }
+
+  [data-open] .page-tint {
+    opacity: 1;
+    visibility: visible;
+    transition:
+      opacity 0.28s ease 0.05s,
+      visibility 0s;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .page-tint {
+      transition-duration: 0.12s !important;
+    }
+
+    [data-open] .page-tint {
+      transition-delay: 0s !important;
+    }
   }
 
   .menu-button {

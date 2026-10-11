@@ -1,8 +1,8 @@
 /**
  * Header behaviour: menu toggle (with the H → bar morph), keyboard and
- * outside-click handling, and where the fade under the H starts. The menu
- * works on its own; GSAP is only fetched, in the background, to tween the
- * logo morph.
+ * outside-click handling. The menu works on its own; GSAP is only fetched, in
+ * the background, to tween the logo morph. The fade under the H and the page
+ * tint behind the open menu are plain CSS (SiteHeader.astro).
  */
 import { logoPaths, MORPH } from './logo-geometry';
 
@@ -28,7 +28,13 @@ function initHeader(header: HTMLElement, button: HTMLButtonElement, menu: HTMLEl
   let openedWithPointer = false;
 
   // ---- H <-> bar morph ----------------------------------------------------
-  const morph = { t: 0 };
+  /**
+   * The current (or last) morph: from one end to the other (0 = H, 1 = bar)
+   * and how far along it is in time (`at`, 0-1, linear). The mark is drawn at
+   * the eased point between the two, so a fresh morph either way starts
+   * promptly and lands softly. When `at` is 0 or 1 the mark is at rest.
+   */
+  const run = { from: 0, to: 0, at: 1 };
   const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)');
 
   // Until GSAP has loaded (or if it never does) the logo just snaps.
@@ -39,39 +45,47 @@ function initHeader(header: HTMLElement, button: HTMLButtonElement, menu: HTMLEl
   );
 
   function renderLogo() {
-    const d = logoPaths(morph.t);
+    const d = logoPaths(run.from + (run.to - run.from) * MORPH.ease(run.at));
     layers.white?.setAttribute('d', d.white);
     layers.amber?.setAttribute('d', d.amber);
     layers.red?.setAttribute('d', d.red);
   }
 
   let tween: ReturnType<Gsap['to']> | undefined;
-  /** Where the running tween started and where it ends (0 or 1 each). */
-  let tweenFrom = 0;
-  let tweenTo = 0;
 
+  /**
+   * Morph the mark towards `target` (0 or 1). Every call decides from the
+   * state alone, never from whether a tween has started yet, so any sequence
+   * of toggles (several in one frame, mid-morph, rapid clicks) ends with the
+   * mark matching the last one.
+   */
   function morphTo(target: number) {
+    tween?.kill();
+    tween = undefined;
     if (!gsap || reducedMotion.matches) {
-      tween?.kill();
-      morph.t = target;
+      run.from = run.to = target;
+      run.at = 1;
       renderLogo();
       return;
     }
-    // Turned round mid-morph: play the running tween back from where it is.
-    // The mark heads home at the speed it had, along the same path, instead
-    // of stopping and easing off again from rest.
-    if (tween?.isActive()) {
-      if ((tween.reversed() ? tweenFrom : tweenTo) !== target) tween.reversed(!tween.reversed());
-      return;
+    let end: number;
+    if (run.at > 0 && run.at < 1) {
+      // Turned round mid-morph: run time back towards where this morph began
+      // (or on again towards its end). The mark heads there along the same
+      // path at the speed it had, instead of stopping and easing off from rest.
+      end = target === run.to ? 1 : 0;
+    } else {
+      const at = run.at === 1 ? run.to : run.from;
+      if (at === target) return;
+      run.from = at;
+      run.to = target;
+      run.at = 0;
+      end = 1;
     }
-    if (morph.t === target) return;
-    // The same curve both ways: a prompt start and a long, soft landing.
-    tweenFrom = morph.t;
-    tweenTo = target;
-    tween = gsap.to(morph, {
-      t: target,
-      duration: MORPH.duration,
-      ease: MORPH.ease,
+    tween = gsap.to(run, {
+      at: end,
+      duration: Math.abs(end - run.at) * MORPH.duration,
+      ease: 'none',
       onUpdate: renderLogo,
     });
   }
@@ -114,9 +128,18 @@ function initHeader(header: HTMLElement, button: HTMLButtonElement, menu: HTMLEl
   });
 
   // Tabbing past either end of the menu closes it (focus has left the header).
+  // Shift+Tab from the H, the first stop on the page, takes focus out of the
+  // page altogether (no relatedTarget): that closes it too, but focus that
+  // leaves with the window (switching apps or tabs) leaves the menu open.
+  let tabbing = false;
+  header.addEventListener('keydown', (event) => {
+    if (event.key !== 'Tab') return;
+    tabbing = true;
+    setTimeout(() => (tabbing = false));
+  });
   header.addEventListener('focusout', (event) => {
     const next = event.relatedTarget as Node | null;
-    if (open && next && !header.contains(next)) setOpen(false);
+    if (open && (next ? !header.contains(next) : tabbing)) setOpen(false);
   });
 
   menu.addEventListener('click', (event) => {
@@ -127,46 +150,4 @@ function initHeader(header: HTMLElement, button: HTMLButtonElement, menu: HTMLEl
   window.addEventListener('pageshow', (event) => {
     if (event.persisted) setOpen(false);
   });
-
-  // ---- Fade under the H -----------------------------------------------------
-  // The fade covers what scrolls up after the hero's glow and lettering: its
-  // mask starts at the top edge of the hero's editor window (--fade-from, in
-  // viewport px; see SiteHeader.astro), so the hero itself is never shaded.
-  // Pages without that window get the fade everywhere. Lenis scrolls the
-  // window from GSAP's ticker, whose frame callback runs before the one
-  // queued here, so the edge moves with the content in the same frame.
-  const edge = document.querySelector<HTMLElement>('[data-hero] .hero__window');
-  /** Document y of the edge; -Infinity: fade everywhere. */
-  let edgeY = -Infinity;
-  let fadeFrom = NaN;
-  let queued = false;
-
-  const updateFade = () => {
-    queued = false;
-    // Clamped: past the edge the whole fade shows; well below it, none.
-    const y = Math.round(Math.min(Math.max(edgeY - window.scrollY, -200), 2000));
-    if (y !== fadeFrom) header.style.setProperty('--fade-from', `${(fadeFrom = y)}px`);
-  };
-
-  const queueFade = () => {
-    if (queued) return;
-    queued = true;
-    requestAnimationFrame(updateFade);
-  };
-
-  if (edge) {
-    // Layout position, which ignores the window's load-in transform. It moves
-    // only when the hero is laid out again (width, fonts), and so does the
-    // hero's size.
-    const measure = () => {
-      let y = 0;
-      for (let el: HTMLElement | null = edge; el; el = el.offsetParent as HTMLElement | null) y += el.offsetTop;
-      edgeY = y;
-      queueFade();
-    };
-    new ResizeObserver(measure).observe(edge.closest('[data-hero]') ?? edge);
-    window.addEventListener('scroll', queueFade, { passive: true });
-  } else {
-    updateFade();
-  }
 }

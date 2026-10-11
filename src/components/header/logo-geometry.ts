@@ -3,16 +3,16 @@
  * turns into when the menu opens.
  *
  * The bar is the H turned on its side. While the menu opens the H makes a
- * quarter turn clockwise, its stems slide together (the crossbar shortens and
- * the counters close) and it settles a little lower as the 30 × 10.75 bar. The
- * shape is one 12-vertex rounded polygon drawn in the H's own frame and then
- * turned, so the chromatic-aberration fringes (the polygon dilated across the
- * stems) turn with it: beside the H, above and below the bar, with no
- * cross-fade between the two.
+ * quarter turn clockwise, and as it turns its stems slide together (the
+ * crossbar shortens and the counters close) and it settles a little lower as
+ * the 30 × 10.75 bar. The shape is one 12-vertex rounded polygon drawn in the
+ * H's own frame and then turned, so the chromatic-aberration fringes (the
+ * polygon dilated across the stems) turn with it: beside the H, above and
+ * below the bar, with no cross-fade between the two.
  *
- * logoPaths(t) takes the morph's progress (0 = H, 1 = bar, already eased by
- * the tween, see MORPH), so the same function draws the static markup on the
- * server and every frame of the morph in the browser, in either direction.
+ * logoPaths(t) takes the morph's progress (0 = H, 1 = bar, already eased with
+ * MORPH.ease by header.ts), so the same function draws the static markup on
+ * the server and every frame of the morph in the browser, in either direction.
  *
  * Units are CSS px relative to the white ink's top-left corner at t = 0
  * (25 × 30), measured from the designer's clean export of the logo.
@@ -72,22 +72,6 @@ const BAR = { h: 10.75, r: 1.8, drop: 10.075 };
 const CX = W / 2;
 const CY = HEIGHT / 2;
 
-/**
- * The stems slide together over this stretch of the morph's progress (the
- * turn and the drop run over all of it). Starting a little late keeps the
- * mark reading as an H while it tips over; finishing a little early lets the
- * finished bar settle flat on its own instead of closing up as it lands.
- * Played backwards (closing) the stems part as the bar starts to turn and the
- * H rights itself last.
- */
-const MERGE = { from: 0.14, to: 0.94 };
-
-/** Quintic smootherstep of t across [from, to]: no jolt at either end. */
-function smoother(t: number, from: number, to: number): number {
-  const x = Math.min(1, Math.max(0, (t - from) / (to - from)));
-  return x * x * x * (x * (x * 6 - 15) + 10);
-}
-
 /** CSS-style cubic-bezier timing function (x1, x2 in [0, 1]), solved with Newton steps. */
 function cubicBezier(x1: number, y1: number, x2: number, y2: number): (p: number) => number {
   const cx = 3 * x1;
@@ -115,7 +99,9 @@ const mix = (a: number, b: number, k: number) => a + (b - a) * k;
 
 /**
  * The 12 polygon vertices in the H's (unturned) frame with the stems merged by
- * k, plus each counter's half-width (the room the inner fringes have).
+ * k, plus each counter's half-width (the room the inner fringes have). Every
+ * vertex and radius moves in a straight line at a steady rate in k, so the
+ * shape changes evenly from the H to the slab.
  */
 function vertices(k: number): { v: Vertex[]; counter: number } {
   // Stems slide together until they meet in the middle as the slab.
@@ -123,11 +109,11 @@ function vertices(k: number): { v: Vertex[]; counter: number } {
   const right = mix(W, CX + BAR.h / 2, k);
   const stemL = mix(STEM, CX, k);
   const stemR = mix(W - STEM, CX, k);
-  // The counters close sideways with the stems and grow shallower faster,
-  // so they shrink to nothing instead of ending as slits between the stems.
-  const shallow = 1 - (1 - k) * (1 - k);
-  const top = mix(COUNTER_TOP_END, 0, shallow);
-  const bottom = mix(COUNTER_BOTTOM_START, HEIGHT, shallow);
+  // The counters get shallower as fast as they get narrower: each shrinks to
+  // nothing in proportion (never a slit between the stems, never a sudden
+  // snap shut at the end).
+  const top = mix(COUNTER_TOP_END, 0, k);
+  const bottom = mix(COUNTER_BOTTOM_START, HEIGHT, k);
   const rOuter = mix(R_OUTER, BAR.r, k);
   const rEnd = R_STEM_END * (1 - k);
   const rFillet = R_FILLET * (1 - k);
@@ -207,12 +193,17 @@ export interface LogoPaths {
   red: string;
 }
 
-/** Path data for the three stacked layers (red below amber below white) at morph progress t. */
+/**
+ * Path data for the three stacked layers (red below amber below white) at
+ * morph progress t. The turn, the drop and the change of shape all run on t
+ * itself, in step: a third of the way round the H is a third of the way to
+ * the bar. So the whole morph is one motion with the tween's easing, the same
+ * forwards, backwards and when turned round mid-way.
+ */
 export function logoPaths(t: number): LogoPaths {
-  const merge = smoother(t, MERGE.from, MERGE.to);
   const angle = (Math.PI / 2) * t;
   const dy = BAR.drop * t;
-  const { v, counter } = vertices(merge);
-  const layer = (fringe: Fringe) => roundedPath(place(dilate(v, fringe, merge, counter), angle, dy));
+  const { v, counter } = vertices(t);
+  const layer = (fringe: Fringe) => roundedPath(place(dilate(v, fringe, t, counter), angle, dy));
   return { white: layer(WHITE), amber: layer(AMBER), red: layer(RED) };
 }

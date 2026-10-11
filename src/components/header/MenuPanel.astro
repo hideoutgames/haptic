@@ -233,8 +233,18 @@ const columns = [
 
   .menu__foot {
     grid-column: 1 / -1;
-    /* Footer row: four empty rows (131px in the mockup) below the last page link. */
-    margin-top: calc(131 * var(--m));
+    /* Footer row: four empty rows (131px in the mockup) below the last page
+       link. On short windows (landscape phones and tablets, squat browser
+       windows) this gap gives way first, down to one row, so Hideout and
+       Norway fit without scrolling the panel. The panel may be as tall as
+       .menu__body's max-height; everything in it but this gap takes
+       263.2 * --m (padding 23.4 + 14.8, titles 33 + 27, four links 4 × 33,
+       footer 33), plus 77 * --m above the panel; 1px spare for rounding. */
+    margin-top: clamp(
+      calc(33 * var(--m)),
+      calc(100dvh - var(--safe-top) - 340.2 * var(--m) - 17px),
+      calc(131 * var(--m))
+    );
     display: flex;
     justify-content: space-between;
     align-items: center;
