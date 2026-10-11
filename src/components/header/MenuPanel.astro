@@ -61,7 +61,7 @@ const columns = [
           <ul>
             {column.links.map((link) => (
               <li>
-                {/* The current page is marked for assistive tech only; the mockup shows no visual cue. */}
+                {/* The current page: an amber dot beside it (CSS), and aria-current for assistive tech. */}
                 <a
                   class="menu__link"
                   href={withBase(link.href)}
@@ -219,6 +219,32 @@ const columns = [
     text-decoration-thickness: calc(2 * var(--m));
     text-decoration-color: transparent;
     transition: text-decoration-color 0.15s ease;
+  }
+
+  /* The current page: a small amber dot hanging in the gutter to its left, so
+     the labels stay aligned with their column title. */
+  .menu__link[aria-current='page'] {
+    position: relative;
+  }
+
+  .menu__link[aria-current='page']::before {
+    content: '';
+    position: absolute;
+    top: 50%;
+    left: calc(-15 * var(--m));
+    width: calc(6 * var(--m));
+    height: calc(6 * var(--m));
+    min-width: 5px;
+    min-height: 5px;
+    border-radius: 50%;
+    background: var(--c-amber);
+    translate: 0 -50%;
+  }
+
+  @media (forced-colors: active) {
+    .menu__link[aria-current='page']::before {
+      background: CanvasText;
+    }
   }
 
   .menu__link:hover,
