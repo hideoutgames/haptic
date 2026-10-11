@@ -229,11 +229,14 @@ export async function createShowcaseScene(opts: SceneOptions): Promise<ShowcaseS
   /**
    * Everything the choreography can show: the world-space box
    * around the devices and their shadows in sampled poses (each state value
-   * swept on its own, from the start and from the finished state, which covers
-   * every device whose pose follows its own values). The poses themselves
-   * live in choreography.ts; this only measures them, so it follows changes
-   * there. Measured again whenever the layout or the canvas size changes (a
-   * few milliseconds), since poses may depend on the viewport.
+   * swept on its own, from the start and from the finished state). The box
+   * also holds the poses where moves overlap (the MacBook rising, turning and
+   * opening at once): each device follows only its own values, and each value
+   * moves it along an axis of its own or between extremes that the sweeps
+   * reach, so the box around the sweeps holds every mix of them. The poses
+   * themselves live in choreography.ts; this only measures them, so it
+   * follows changes there. Measured again whenever the layout or the canvas
+   * size changes (a few milliseconds), since poses may depend on the viewport.
    */
   const reach = new Box3();
   let reachKey = '';
@@ -328,10 +331,11 @@ export async function createShowcaseScene(opts: SceneOptions): Promise<ShowcaseS
   /**
    * Finds where the iPad starts its slide on this canvas: the distance left of
    * its resting place at which it and its stand, turned as they start and seen
-   * from where the dolly starts (the farthest the camera gets), are just past
-   * the left edge. Whatever the screen's shape, it then comes into view at the
-   * start of its beat, neither popping in partly on screen (too short a slide)
-   * nor spending the first part of the beat out of sight (too long a one).
+   * from where the dolly starts (the farthest the camera gets) with the group
+   * settled back (the farthest it gets), are just past the left edge. Whatever
+   * the screen's shape, it then comes into view at the start of its beat,
+   * neither popping in partly on screen (too short a slide) nor spending the
+   * first part of the beat out of sight (too long a one).
    */
   const fitArrival = () => {
     const start = finalState();
@@ -481,7 +485,7 @@ export async function createShowcaseScene(opts: SceneOptions): Promise<ShowcaseS
     });
     const gl = renderer.getContext();
     const px = new Uint8Array(4);
-    const states: Array<Partial<SceneState>> = lite ? [{}] : [{ ipad: 0, phone: 0 }, { phone: 0 }, { flip: 0 }, {}];
+    const states: Array<Partial<SceneState>> = lite ? [{}] : [{ ipad: 0, phone: 0 }, { ipad: 0.5, phone: 0 }, { phone: 0.5 }, {}];
     for (const patch of states) {
       Object.assign(warm, finalState(), patch);
       pose(warm);
