@@ -29,12 +29,12 @@ function initHeader(header: HTMLElement, button: HTMLButtonElement, menu: HTMLEl
 
   // ---- H <-> bar morph ----------------------------------------------------
   /**
-   * The current (or last) morph: from one end to the other (0 = H, 1 = bar)
-   * and how far along it is in time (`at`, 0-1, linear). The mark is drawn at
-   * the eased point between the two, so a fresh morph either way starts
-   * promptly and lands softly. When `at` is 0 or 1 the mark is at rest.
+   * Where the mark is, in quarter turns clockwise (logo-geometry.ts): even =
+   * the H, odd = the bar. It only ever grows: opening turns on to the next
+   * odd number, closing to the next even one, so the mark always keeps
+   * turning the same way. It is wrapped back into 0-4 whenever it comes to rest.
    */
-  const run = { from: 0, to: 0, at: 1 };
+  const mark = { phase: 0 };
   const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)');
 
   // Until GSAP has loaded (or if it never does) the logo just snaps.
@@ -45,7 +45,7 @@ function initHeader(header: HTMLElement, button: HTMLButtonElement, menu: HTMLEl
   );
 
   function renderLogo() {
-    const d = logoPaths(run.from + (run.to - run.from) * MORPH.ease(run.at));
+    const d = logoPaths(mark.phase);
     layers.white?.setAttribute('d', d.white);
     layers.amber?.setAttribute('d', d.amber);
     layers.red?.setAttribute('d', d.red);
@@ -53,40 +53,46 @@ function initHeader(header: HTMLElement, button: HTMLButtonElement, menu: HTMLEl
 
   let tween: ReturnType<Gsap['to']> | undefined;
 
+  /** Wrap the resting mark back into 0-4 (the drawing repeats every four quarters). */
+  function settle() {
+    mark.phase %= 4;
+    tween = undefined;
+  }
+
   /**
-   * Morph the mark towards `target` (0 or 1). Every call decides from the
-   * state alone, never from whether a tween has started yet, so any sequence
-   * of toggles (several in one frame, mid-morph, rapid clicks) ends with the
-   * mark matching the last one.
+   * Turn the mark on to the bar (open) or the H (closed): the nearest such
+   * position at or ahead of where it is, so it never turns back. Every call
+   * decides from the position alone, never from whether a tween has started
+   * yet, so any sequence of toggles ends with the mark matching the last one:
+   * two in one frame leave it where it was, and a toggle mid-turn carries it on
+   * round to the next matching position instead of reversing.
    */
-  function morphTo(target: number) {
+  function morphTo(toBar: boolean) {
+    const moving = !!tween;
     tween?.kill();
     tween = undefined;
+    // Next odd (bar) or even (H) quarter at or ahead of the current position.
+    const wanted = toBar ? 1 : 0;
+    let target = Math.ceil(mark.phase - 1e-6);
+    if (((target % 2) + 2) % 2 !== wanted) target += 1;
     if (!gsap || reducedMotion.matches) {
-      run.from = run.to = target;
-      run.at = 1;
+      mark.phase = target;
+      settle();
       renderLogo();
       return;
     }
-    let end: number;
-    if (run.at > 0 && run.at < 1) {
-      // Turned round mid-morph: run time back towards where this morph began
-      // (or on again towards its end). The mark heads there along the same
-      // path at the speed it had, instead of stopping and easing off from rest.
-      end = target === run.to ? 1 : 0;
-    } else {
-      const at = run.at === 1 ? run.to : run.from;
-      if (at === target) return;
-      run.from = at;
-      run.to = target;
-      run.at = 0;
-      end = 1;
+    if (target - mark.phase < 1e-6) {
+      settle();
+      return;
     }
-    tween = gsap.to(run, {
-      at: end,
-      duration: Math.abs(end - run.at) * MORPH.duration,
-      ease: 'none',
+    tween = gsap.to(mark, {
+      phase: target,
+      duration: (target - mark.phase) * MORPH.duration,
+      // From rest: a prompt start and a soft landing. Already turning: carry the
+      // motion on without easing in again.
+      ease: moving ? 'power2.out' : MORPH.ease,
       onUpdate: renderLogo,
+      onComplete: settle,
     });
   }
 
@@ -126,7 +132,7 @@ function initHeader(header: HTMLElement, button: HTMLButtonElement, menu: HTMLEl
 
     header.toggleAttribute('data-open', open);
     button.setAttribute('aria-expanded', String(open));
-    morphTo(open ? 1 : 0);
+    morphTo(open);
 
     if (open) {
       focusIntoMenu();
