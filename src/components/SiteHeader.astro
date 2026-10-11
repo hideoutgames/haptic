@@ -1,19 +1,23 @@
 ---
 /**
  * Site header: the H logo (fixed, top centre, always visible) is the menu
- * button; the popover lists the pages. A faint dark scrim under it keeps the
- * logo legible over screenshots and devices. Behaviour lives in header/header.ts.
+ * button; the popover lists the pages. A soft black fade under the H keeps it
+ * legible over whatever scrolls beneath, and while the menu is open the rest
+ * of the page is tinted a little darker. Behaviour lives in header/header.ts.
  */
 import HeaderLogo from './header/HeaderLogo.astro';
 import MenuPanel from './header/MenuPanel.astro';
 
+/** "Haptic Engine" column: site pages, without the deploy base. */
 const pages = [
   { label: 'Home', href: '/' },
-  { label: 'Pricing', href: '/pricing' },
   { label: 'Download', href: '/download' },
   { label: 'Support', href: '/support' },
   { label: 'About', href: '/about' },
 ];
+
+/** "Learning Center" column. The docs are not online yet: a plain fragment for now. */
+const learning = [{ label: 'Documentation', href: '#docs' }];
 
 // Astro.url.pathname includes the deploy base; the page list above does not.
 const base = import.meta.env.BASE_URL.replace(/\/$/, '');
@@ -23,6 +27,8 @@ const menuId = 'site-menu';
 ---
 
 <header class="site-header" data-site-header>
+  <div class="page-tint" aria-hidden="true"></div>
+
   <button
     class="menu-button"
     type="button"
@@ -34,7 +40,7 @@ const menuId = 'site-menu';
     <HeaderLogo />
   </button>
 
-  <MenuPanel id={menuId} {pages} {currentPath} />
+  <MenuPanel id={menuId} {pages} {learning} {currentPath} />
 </header>
 
 <script>
@@ -47,6 +53,24 @@ const menuId = 'site-menu';
        menu text stays readable on small laptops/tablets; fixed 1px on phones. */
     --m: max(var(--u), 0.9px);
     --safe-top: env(safe-area-inset-top, 0px);
+    /* Fade under the H: a wide, shallow ellipse centred just below the H's
+       middle. It reads as a soft shade hanging from the top edge, ends above
+       the showcase heading and only grazes the devices beside it. That heading
+       is never less than 15svh down (DeviceShowcase.astro: 0.66svh - 401 *
+       0.00127svh once the viewport is short), and its letters start about 4px
+       below its box, so on short screens (landscape phones, small laptop
+       windows) the ellipse gets shallower, and narrower in proportion. */
+    --fade-cy: calc(var(--safe-top) + 34 * var(--m));
+    --fade-y: clamp(18px, calc(15svh + 4px - 34 * var(--m)), calc(72 * var(--m)));
+    --fade-x: min(calc(400 * var(--m)), calc(var(--fade-y) * 5.5));
+    /* At its core the fade takes white content (the HAPTIC lettering, the
+       download buttons) down to about 40% grey, which still leaves the H's
+       white more than 5:1 against it, without a heavy smudge on the hero's
+       bright glow. */
+    --fade-strength: 0.6;
+    /* Black over the rest of the page while the menu is open: dimmed, but the
+       page still reads clearly behind the panel. */
+    --tint-strength: 0.35;
     position: fixed;
     inset: 0 0 auto;
     z-index: var(--z-header);
@@ -55,22 +79,82 @@ const menuId = 'site-menu';
     pointer-events: none;
   }
 
-  /* Scrim: eased dark fade under the logo, behind the button and the popover. */
+  /*
+   * The fade: black at full strength across the H and its fringes, then a
+   * raised-cosine falloff (flat at both ends, so no edge or band shows) to
+   * nothing. Behind it, a band as tall as the safe-area inset keeps a phone's
+   * status bar readable too (zero height where there is no inset). It is
+   * fixed with the header, so it is always under the H, over every section
+   * (the hero's lettering included) and at every scroll position.
+   */
   .site-header::before {
     content: '';
     position: absolute;
     inset: 0 0 auto;
     z-index: -1;
-    height: calc(var(--safe-top) + 96 * var(--m));
-    background: linear-gradient(
-      rgb(8 7 6 / 0.55),
-      rgb(8 7 6 / 0.42) 20%,
-      rgb(8 7 6 / 0.26) 45%,
-      rgb(8 7 6 / 0.11) 70%,
-      rgb(8 7 6 / 0.03) 88%,
-      rgb(8 7 6 / 0)
-    );
+    height: calc(var(--fade-cy) + var(--fade-y));
+    background:
+      linear-gradient(rgb(0 0 0 / 0.6), rgb(0 0 0 / 0.45) 60%, rgb(0 0 0 / 0)) top / 100%
+        calc(var(--safe-top) * 1.4) no-repeat,
+      radial-gradient(
+        var(--fade-x) var(--fade-y) at 50% var(--fade-cy),
+        rgb(0 0 0) 28%,
+        rgb(0 0 0 / 0.976) 35.2%,
+        rgb(0 0 0 / 0.905) 42.4%,
+        rgb(0 0 0 / 0.794) 49.6%,
+        rgb(0 0 0 / 0.655) 56.8%,
+        rgb(0 0 0 / 0.5) 64%,
+        rgb(0 0 0 / 0.345) 71.2%,
+        rgb(0 0 0 / 0.206) 78.4%,
+        rgb(0 0 0 / 0.095) 85.6%,
+        rgb(0 0 0 / 0.024) 92.8%,
+        rgb(0 0 0 / 0) 100%
+      );
+    opacity: var(--fade-strength);
     pointer-events: none;
+  }
+
+  /*
+   * While the menu is open the page behind it is tinted a little darker. The
+   * layer sits in the header (above the page, below the fade, the button and
+   * the panel) and fades with the panel. It takes no pointers, so a click on
+   * the page still lands there and closes the menu, and it changes nothing
+   * about layout or scrolling. 100lvh: it still covers the page when a phone's
+   * toolbars slide away during a scroll.
+   */
+  .page-tint {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100vh;
+    height: 100lvh;
+    z-index: -2;
+    background: rgb(0 0 0 / var(--tint-strength));
+    opacity: 0;
+    visibility: hidden;
+    pointer-events: none;
+    transition:
+      opacity 0.18s ease,
+      visibility 0s linear 0.18s;
+  }
+
+  [data-open] .page-tint {
+    opacity: 1;
+    visibility: visible;
+    transition:
+      opacity 0.28s ease 0.05s,
+      visibility 0s;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .page-tint {
+      transition-duration: 0.12s !important;
+    }
+
+    [data-open] .page-tint {
+      transition-delay: 0s !important;
+    }
   }
 
   .menu-button {
@@ -114,6 +198,17 @@ const menuId = 'site-menu';
   @media (max-width: 820px) {
     .site-header {
       --m: 1px;
+    }
+  }
+
+  /* Phones and tablets in portrait (the showcase's stacked layout, same query
+     as DeviceShowcase.astro): across the whole width (fading toward the
+     edges), and ending above the stacked showcase heading, which sits
+     clamp(68px, 11svh, 92px) below the safe area. */
+  @media (max-width: 820px) and (max-aspect-ratio: 1/1) {
+    .site-header {
+      --fade-x: 70vw;
+      --fade-y: clamp(44px, calc(11svh - 26px), 66px);
     }
   }
 </style>
