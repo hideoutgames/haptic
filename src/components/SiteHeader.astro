@@ -213,7 +213,8 @@ const menuId = 'site-menu';
      heading's letters start. Its box sits clamp(68px, 11svh, 92px) below the
      safe area; the fade ends 8-10px lower (34px + --fade-y), and at
      line-height 1.25 the letters start 4-8px below the box, so at most the
-     last few px of the falloff, under 2% black, reach their tops. */
+     last few px of the falloff reach their tops (about 1-3% black on
+     common phones, up to 6% on very short ones). */
   @media (max-width: 820px) and (max-aspect-ratio: 1/1) {
     .site-header {
       --fade-x: 70vw;

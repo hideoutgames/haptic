@@ -416,8 +416,8 @@ const sizesFor = (stacked: string, side: string) => `${STACKED_QUERY} ${stacked}
       left: auto;
       flex: none;
       width: auto;
-      /* SiteHeader.astro's stacked --fade-y is sized to end at this offset:
-         change the two together. */
+      /* SiteHeader.astro's stacked --fade-y is sized from this offset (its
+         fade ends a few px past it, above the letters): change them together. */
       margin: calc(clamp(68px, 11svh, 92px) + env(safe-area-inset-top, 0px)) var(--gutter) 0;
     }
 

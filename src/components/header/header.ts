@@ -143,6 +143,11 @@ function initHeader(header: HTMLElement, button: HTMLButtonElement, menu: HTMLEl
     setOpen(!open);
   });
   button.addEventListener('blur', () => button.removeAttribute('data-quiet-focus'));
+  // A pointer user who then tabs through the menu is on the keyboard now:
+  // Escape gives the focus back with its ring.
+  header.addEventListener('keydown', (event) => {
+    if (event.key === 'Tab') openedWithPointer = false;
+  });
 
   document.addEventListener('keydown', (event) => {
     if (event.key === 'Escape' && open) {

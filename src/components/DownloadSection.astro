@@ -348,8 +348,10 @@ const LEAD = 'Build from anywhere, anytime.';
     border-radius: calc(var(--badge-h) * 0.15);
   }
 
-  /* The longest row (any four of the five platforms) is about 525px wide. The list is at least 600px wide from 650px up,
-     so only narrower screens can wrap it; reserve two rows there so the swap never moves the page. */
+  /* The longest row (any four of the five platforms) is about 525px wide. The
+     list has more room than that from 650px up (beside its label from 1000px,
+     still at least 580px), so only narrower screens can wrap it; reserve two
+     rows there so the swap never moves the page. */
   @media (max-width: 700px) {
     .others__list {
       min-height: calc(var(--chip-h) * 2 + var(--row-gap));
