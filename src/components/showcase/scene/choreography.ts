@@ -170,11 +170,12 @@ const MAC_RISE = 60;
 /** Where the search for the iPhone's start (`Starts.phoneDrop`) begins (mm below the ground). */
 export const PHONE_DROP = 200;
 /**
- * The iPhone's contact shadow fades in over the last this many mm of its rise,
- * or over all of it if it starts nearer: the shadow lies in view, where the
- * iPhone comes to rest, while the iPhone itself is still out of sight.
+ * The iPhone's contact shadow fades in as it touches down, over the last this
+ * many mm of its rise. It rises from below the ground, so a shadow lying there
+ * any earlier is drawn across the part of it still below the ground: it would
+ * seem to rise through its own shadow.
  */
-const PHONE_SHADOW_IN = 200;
+const PHONE_SHADOW_IN = 8;
 /**
  * The iPad's shadows fade in over this first part of its slide: their soft
  * edges reach a little past it, and would otherwise show at the edge of the
@@ -278,7 +279,7 @@ export function applyState(models: Models, s: SceneState, L: Layout, starts: Sta
   p.phone.x = L.phone.x;
   p.phone.z = L.phone.z;
   p.phone.yaw = phone.group.rotation.y;
-  p.phone.strength = phone.group.visible ? smooth(-Math.min(starts.phoneDrop, PHONE_SHADOW_IN), -10, phoneY) : 0;
+  p.phone.strength = phone.group.visible ? smooth(-PHONE_SHADOW_IN, 0, phoneY) : 0;
   p.phone.lift = Math.max(0, phoneY);
   return p;
 }
