@@ -168,6 +168,22 @@ const sizesFor = (stacked: string, side: string) => `${STACKED_QUERY} ${stacked}
     background: var(--c-bg);
   }
 
+  /* The pin (showcase.ts): the stage sticks to the top of the screen while the
+     section, taller by the pin's length, scrolls past. The browser holds it,
+     on its own scrolling thread, so it never lags or overshoots the scroll.
+     The length is a spacer after the stage, not padding: a sticky element
+     only travels within its parent's content box. */
+  .showcase[data-mode='pinned']::after {
+    content: '';
+    display: block;
+    height: var(--pin-length, 0px);
+  }
+
+  [data-mode='pinned'] .stage {
+    position: sticky;
+    top: 0;
+  }
+
   .stage__bg {
     position: absolute;
     inset: 0;
