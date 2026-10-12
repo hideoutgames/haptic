@@ -24,8 +24,8 @@
  *    2.20 – 2.50   final hold, then the pin releases
  *
  * One timeline runs the whole film, from the moment the section scrolls in
- * to the end of the pin, under one scrub (the pin is a ScrollTrigger of its
- * own), so the MacBook's arrival flows into the lid opening with no seam
+ * to the end of the pin, under one scrub (the pin is the sticky stage, apart
+ * from it), so the MacBook's arrival flows into the lid opening with no seam
  * where the pin starts. The eases are chosen per kind of move (`EASE`; no
  * overshoot), the scrub's catch-up smooths the scroll steps, and everything
  * plays in reverse when scrolling back. The camera dollies in a few per cent
@@ -54,17 +54,16 @@
  * stacked layout also lifts the 2D group as the devices join, to keep it
  * centred under the copy; the CSS says by how much.)
  *
- * Touch scrolling is taken over while the film is on the page (GSAP's
- * normalizeScroll, touch input only, from the moment the intro lets go of the
- * page). Left native, a phone or tablet scrolls off the main thread: a swipe
- * carries the page past the start or end of the pin before the script can fix
- * or release the stage, so the stage overshoots and kicks back, and the
- * toolbar sliding away can leave it short of the screen's height. Scrolled
- * from the main thread, the pin moves in step with the page and the toolbar
- * stays put. (The wheel stays with Lenis.) Late re-measures wait for the
- * scroll to stop (`ScrollTrigger.refresh(true)`): a forced one in the middle
- * of a swipe would unpin the stage, measure and pin it again, and kill the
- * swipe's momentum with a jump.
+ * The pin is the browser's own: the stage is `position: sticky` in a section
+ * made taller by the pin's length (`--pin-length`, set on every refresh), so
+ * it holds still in step with the scroll on every device, on the browser's
+ * scrolling thread. (A script pin fixed or released the stage from the main
+ * thread: on phones, which scroll off it, a swipe carried the page past the
+ * pin's start or end first, and the stage overshot and kicked back. Taking
+ * touch scrolling over to fix that cost smoothness instead: every slow frame
+ * of the 3D scene became a hitch in the scroll.) Late re-measures wait for
+ * the scroll to stop (`ScrollTrigger.refresh(true)`): one forced in the middle
+ * of a swipe would kill its momentum with a jump.
  *
  * There is a single matchMedia context on purpose. Reverting and rebuilding
  * the pin when the layout changes (rotation, resize, zoom) would reset the
@@ -86,8 +85,8 @@ import {
   type SceneState,
   type ShowcaseScene,
 } from '../components/showcase/scene/types';
-import { getLenis, gsap, initSmoothScroll, ScrollTrigger } from './motion';
-import { ready, track } from './preload';
+import { gsap, ScrollTrigger } from './motion';
+import { track } from './preload';
 
 /**
  * The film, in screens of scroll from the start of the pin (negative: before
@@ -258,15 +257,6 @@ export function initShowcase(root: HTMLElement): void {
     let cancelled = false;
     const cleanups: Array<() => void> = [];
 
-    // Touch scrolling from the main thread, once the intro has let go of the
-    // page (it holds the scroll until then): see the file header.
-    const coarse = matchMedia('(any-pointer: coarse)').matches;
-    if (coarse) {
-      void ready.then(() => {
-        if (!cancelled) ScrollTrigger.normalizeScroll({ type: 'touch', allowNestedScroll: true });
-      });
-    }
-
     // Copy that is not the current step waits below its slot.
     gsap.set(copy.slice(1), { opacity: 0, yPercent: 20 });
 
@@ -293,23 +283,17 @@ export function initShowcase(root: HTMLElement): void {
       },
     });
 
-    // The pin: the stage holds still from the top of the section for `T.end` units.
-    //
-    // The default pin switches the stage to position: fixed, which Chromium
-    // reports as a layout shift of about 1 each time the pin starts and ends
-    // (nothing moves, but it counts against the page's field CLS). Where Lenis
-    // drives the scroll, from the main thread in the same frame, the pin is a
-    // transform instead. Touch devices scroll natively, off the main thread,
-    // and would see a transform-pinned stage lag behind: they keep the default.
-    // This script runs before the layout's own, so Lenis may not exist yet:
-    // initSmoothScroll is idempotent, and asking for it here settles the question.
-    const smoothScrolled = !!(getLenis() ?? initSmoothScroll()) && !coarse;
+    // The pin: the stage (sticky, see the CSS) holds still from the top of the
+    // section for `T.end` units, which the section's extra height provides. It
+    // is set at the start of every refresh, before anything is measured. This
+    // trigger only marks the pin's span (for tests and `?debug3d`).
+    const setPinLength = () => root.style.setProperty('--pin-length', `${T.end * unit()}px`);
+    setPinLength();
+    ScrollTrigger.addEventListener('refreshInit', setPinLength);
     const pin = ScrollTrigger.create({
       trigger: root,
       start: 'top top',
       end: () => `+=${T.end * unit()}`,
-      pin: stage,
-      pinType: smoothScrolled ? 'transform' : 'fixed',
     });
 
     // Progress: a third of the bar per step, switching with the copy.
@@ -563,7 +547,8 @@ export function initShowcase(root: HTMLElement): void {
 
     return () => {
       cancelled = true;
-      if (coarse) ScrollTrigger.normalizeScroll(false);
+      ScrollTrigger.removeEventListener('refreshInit', setPinLength);
+      root.style.removeProperty('--pin-length');
       cleanups.forEach((fn) => fn());
       if (canvas?.isConnected) canvas.replaceWith(canvas.cloneNode(false));
       delete root.dataset.mode;
