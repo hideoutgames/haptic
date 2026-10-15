@@ -61,11 +61,14 @@ const glow = glowBackground();
     overflow: clip;
     display: grid;
     place-items: center;
+    /* The whole screen, under a floating Safari toolbar too (100lvh); the block is
+       centred in the space between the bars (the padding takes the rest). */
     min-height: 100vh;
-    min-height: 100svh;
+    min-height: 100lvh;
     /* Clear the fixed header; the extra space below lifts the block a little above centre
        (the digits' line box also has more room under the glyphs than above them). */
-    padding: calc(var(--safe-top) + max(64px, 72 * var(--u))) var(--gutter) max(104px, calc(128 * var(--u)));
+    padding: calc(var(--safe-top) + max(64px, 72 * var(--u))) var(--gutter)
+      calc(max(104px, 128 * var(--u)) + 100lvh - 100svh);
     color: var(--c-text);
     background: var(--c-bg);
   }

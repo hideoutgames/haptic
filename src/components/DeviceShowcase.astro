@@ -179,9 +179,16 @@ const sizesFor = (stacked: string, side: string) => `${STACKED_QUERY} ${stacked}
     height: var(--pin-length, 0px);
   }
 
+  /* As tall as the screen with Safari's bars away (100lvh): its bottom bar floats
+     over the page, and a stage only as tall as the space between the bars left a
+     black strip under it. The composition keeps to that space (all its measures
+     are in svh): the strip the bar can cover is padding, which the backdrop and
+     the 3D scene fill. (Elsewhere both units are the same and the padding is 0.) */
   [data-mode='pinned'] .stage {
     position: sticky;
     top: 0;
+    height: 100lvh;
+    padding-bottom: calc(100lvh - 100svh);
   }
 
   .stage__bg {
@@ -419,6 +426,12 @@ const sizesFor = (stacked: string, side: string) => `${STACKED_QUERY} ${stacked}
          the stage, which the backdrop covers whatever its height. */
       --ay: 76%;
       --tail: calc(100% - var(--ay));
+    }
+
+    /* Pinned, the stage reaches under a floating Safari toolbar (see above): the
+       horizon is a share of the space between the bars, where the devices are. */
+    .showcase[data-mode='pinned'] {
+      --ay: calc(100svh * 0.76);
     }
 
     .stage {
