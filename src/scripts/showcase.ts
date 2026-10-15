@@ -260,8 +260,15 @@ export function initShowcase(root: HTMLElement): void {
     // Copy that is not the current step waits below its slot.
     gsap.set(copy.slice(1), { opacity: 0, yPercent: 20 });
 
-    /** Pixels of scroll per unit of `T` (one screen, a little less when stacked). */
-    const unit = () => stage.offsetHeight * (matchMedia(STACKED_QUERY).matches ? STACKED_SCALE : 1);
+    /**
+     * Pixels of scroll per unit of `T` (one screen, a little less when stacked).
+     * The screen is the stage's content box, the space between Safari's bars; its
+     * padding is the strip under a floating toolbar (see the CSS).
+     */
+    const unit = () => {
+      const screen = stage.clientHeight - (parseFloat(getComputedStyle(stage).paddingBottom) || 0);
+      return screen * (matchMedia(STACKED_QUERY).matches ? STACKED_SCALE : 1);
+    };
 
     // The film: one timeline from the moment the section is `-T.arrive` units
     // from the top of the screen to the end of the pin, scrubbed by the scroll.
