@@ -4,12 +4,15 @@
  * questions and a pointer to support, in the shell the secondary pages share
  * (layouts/Page.astro).
  *
- * Haptic is free on desktop (Mac, Windows, Linux) while the person or company
- * using it makes less than REVENUE_LIMIT a year in revenue. iPhone, iPad and
- * Android, and any use above that revenue, need Haptic Pro: one subscription
- * covers all of a person's devices, and teams need one per seat. Its price is
- * not set yet, so the card says so (PRO_PRICE: put the price there when it
- * is). No free trial. Enterprise is by arrangement, through the contact address.
+ * Haptic is free on desktop (Mac, Windows, Linux) for people and organizations
+ * with less than REVENUE_LIMIT a year in revenue. Revenue is what the
+ * organization using Haptic earns from its work, made with Haptic or any other
+ * tool; a personal salary from an unrelated job does not count. iPhone, iPad
+ * and Android, and any use above that revenue, need Haptic Pro: every seat
+ * needs it, and it covers every phone and tablet the person signs in on. Its
+ * price is not set yet, so the card says so (PRO_PRICE: put the price there
+ * when it is). No free trial. Enterprise is on individual terms, through the
+ * contact address.
  *
  * Buttons: the free plan goes to the download section on the home page, Haptic
  * Pro to the sign-up page, Enterprise to an email (CONTACT_EMAIL).
@@ -50,7 +53,7 @@ const PLANS: Plan[] = [
     for: 'Desktop',
     name: 'Haptic',
     price: { text: 'Free' },
-    features: ['The full desktop editor', 'Mac, Windows and Linux', `For revenue under ${PER_YEAR}`],
+    features: ['The full desktop editor', 'Mac, Windows and Linux', `Free for people and organizations with less than ${PER_YEAR} in revenue`],
     cta: { label: 'Download', href: withBase('/#download') },
   },
   {
@@ -58,16 +61,16 @@ const PLANS: Plan[] = [
     for: 'Phone and tablet',
     name: 'Haptic Pro',
     price: PRO_PRICE ? { text: PRO_PRICE } : { text: 'Price coming soon', muted: true },
-    features: ['Haptic on iPhone, iPad and Android', 'One account for all your devices', `For revenue over ${PER_YEAR}`],
+    features: ['Haptic on iPhone, iPad and Android', 'Every seat needs Haptic Pro', 'Covers every phone and tablet you sign in on', `Required above ${PER_YEAR} in revenue`],
     cta: { label: 'Get started', href: withBase('/signup') },
   },
   {
     id: 'enterprise',
     for: 'Studios and large teams',
     name: 'Enterprise',
-    price: { text: 'Let’s talk', muted: true },
-    features: ['Everything in Haptic Pro', 'Seats for your whole team'],
-    cta: { label: 'Contact', href: `mailto:${CONTACT_EMAIL}` },
+    price: { text: 'Contact us', muted: true },
+    features: ['Seats for your whole team, on individual terms'],
+    cta: { label: 'Contact us', href: `mailto:${CONTACT_EMAIL}` },
     note: CONTACT_EMAIL,
   },
 ];
@@ -76,15 +79,19 @@ const PLANS: Plan[] = [
 const FAQ: FaqItem[] = [
   {
     q: 'Do I need a subscription to use Haptic?',
-    a: `Not on desktop: Haptic is free on Mac, Windows and Linux while you, or the company you work for, makes less than ${PER_YEAR} in revenue. To use it on iPhone, iPad or Android you need Haptic Pro.`,
+    a: `Not on desktop: Haptic is free on Mac, Windows and Linux for people and organizations with less than ${PER_YEAR} in revenue. To use it on iPhone, iPad or Android you need Haptic Pro.`,
+  },
+  {
+    q: 'What counts as revenue?',
+    a: 'What the studio, company or other organization using Haptic earns from games, film, architectural visualization, simulation or similar work, made with Haptic or any other tool. A personal salary or income from an unrelated job does not count.',
   },
   {
     q: 'Does one subscription cover all my devices?',
-    a: 'Yes. One Haptic Pro subscription covers every phone and tablet you sign in on with your account.',
+    a: 'Every seat needs Haptic Pro, and Pro also covers every phone and tablet you sign in on.',
   },
   {
-    q: `What if I or my company make more than ${PER_YEAR}?`,
-    a: `Then you need a Haptic Pro subscription, on desktop too. Teams need one subscription per seat: one for each person who uses Haptic. For a larger team, <a href="mailto:${CONTACT_EMAIL}">contact us</a> about Enterprise.`,
+    q: `What if my revenue is more than ${PER_YEAR}?`,
+    a: `Then Haptic Pro is required, on desktop too, and every seat needs it. For seats for your whole team, on individual terms, <a href="mailto:${CONTACT_EMAIL}">contact us</a> about Enterprise.`,
   },
 ];
 ---
